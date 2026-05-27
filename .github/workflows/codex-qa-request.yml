@@ -1,8 +1,11 @@
 name: Request Codex QA
 
-on:
+"on":
   pull_request:
-    types: [opened, ready_for_review, synchronize]
+    types:
+      - opened
+      - ready_for_review
+      - synchronize
 
 permissions:
   contents: read
@@ -15,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check if Codex was already requested
+      - name: Check whether Codex was already requested
         id: existing
         uses: actions/github-script@v7
         with:
@@ -23,15 +26,15 @@ jobs:
             const comments = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.payload.pull_request.number,
+              issue_number: context.payload.pull_request.number
             });
 
-            const alreadyRequested = comments.data.some(comment =>
-              comment.body.includes('@codex') &&
-              comment.body.includes('Review this PR')
-            );
+            const alreadyRequested = comments.data.some((comment) => {
+              return comment.body.includes("@codex") &&
+                comment.body.includes("Review this PR");
+            });
 
-            core.setOutput('already_requested', alreadyRequested ? 'true' : 'false');
+            core.setOutput("already_requested", alreadyRequested ? "true" : "false");
 
       - name: Request Codex QA
         if: steps.existing.outputs.already_requested != 'true'
@@ -39,52 +42,47 @@ jobs:
         with:
           script: |
             const pr = context.payload.pull_request;
-            const body = pr.body || '';
-            const title = pr.title || '';
-            const branch = pr.head.ref || '';
+            const combined = `${pr.title}\n${pr.body || ""}\n${pr.head.ref || ""}`;
+            const match = combined.match(/OVR-\d+/i);
+            const issueId = match ? match[0].toUpperCase() : "linked Linear issue";
 
-            const match =
-              title.match(/OVR-\d+/i) ||
-              body.match(/OVR-\d+/i) ||
-              branch.match(/ovr-\d+/i);
-
-            const issueId = match ? match[0].toUpperCase() : 'linked Linear issue';
-
-            const comment = `@codex Review this PR for ${issueId}.
-
-You are QA only.
-
-Use the linked Linear issue as the source of truth.
-
-Verify:
-- Linear acceptance criteria are satisfied.
-- Architecture notes are followed.
-- QA notes are covered.
-- Relevant commands were run.
-- Typecheck passes.
-- Tests pass.
-- Lint passes if configured.
-- No production feature logic was added early.
-- No deferred scope was added.
-- No workout/game business math lives in mobile UI unless the issue explicitly allows it.
-
-Return:
-- Verdict: Pass / Fail
-- Summary
-- Linear issue reviewed
-- Acceptance criteria checklist
-- Commands run
-- Test results
-- Bugs / gaps found
-- Required fixes
-- Regression notes
-- Merge recommendation
-
-If this fails, do not fix it yourself unless explicitly asked. Leave precise QA comments for Cursor.`;
+            const comment = [
+              `@codex Review this PR for ${issueId}.`,
+              ``,
+              `You are QA only.`,
+              ``,
+              `Use the linked Linear issue as the source of truth.`,
+              ``,
+              `Verify:`,
+              `- Linear acceptance criteria are satisfied.`,
+              `- Architecture notes are followed.`,
+              `- QA notes are covered.`,
+              `- Relevant commands were run.`,
+              `- Typecheck passes.`,
+              `- Tests pass.`,
+              `- Lint passes if configured.`,
+              `- No production feature logic was added early.`,
+              `- No deferred scope was added.`,
+              `- No workout/game business math lives in mobile UI unless the issue explicitly allows it.`,
+              ``,
+              `Return:`,
+              `- Verdict: Pass / Fail`,
+              `- Summary`,
+              `- Linear issue reviewed`,
+              `- Acceptance criteria checklist`,
+              `- Commands run`,
+              `- Test results`,
+              `- Bugs / gaps found`,
+              `- Required fixes`,
+              `- Regression notes`,
+              `- Merge recommendation`,
+              ``,
+              `If this fails, do not fix it yourself unless explicitly asked. Leave precise QA comments for Cursor.`
+            ].join("\n");
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: pr.number,
-              body: comment,
+              body: comment
             });
