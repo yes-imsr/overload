@@ -12,6 +12,7 @@
     "lint": "echo \"lint not configured yet\""
   },
   "dependencies": {
+    "@babel/runtime": "^7.26.0",
     "@overload/core-engine": "workspace:*",
     "@supabase/supabase-js": "^2.49.1",
     "@tanstack/react-query": "^5.100.14",
