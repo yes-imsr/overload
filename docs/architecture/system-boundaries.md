@@ -206,7 +206,7 @@ Allowed language:
 - Stability Task
 - Recovery Challenge
 - Overload Task
-- Entropy Spike
+- Bonus Set
 
 Avoid:
 
