@@ -1,41 +1,30 @@
-import { router } from "expo-router";
-import { StyleSheet, View } from "react-native";
-import {
-  CommandCard,
-  PrimaryCTAButton,
-  ResourceStat,
-} from "@/components";
-import { ScreenShell } from "@/screens/ScreenShell";
-import { spacing } from "@/tokens";
+import { StyleSheet, Text, View } from "react-native";
+import { colors, spacing, typography } from "@/tokens";
 
-/** Intro / Welcome */
-export default function WelcomeScreen() {
+export default function AppShell() {
   return (
-    <ScreenShell
-      title="Overload"
-      subtitle="System online. Initialize training profile to begin."
-    >
-      <View style={styles.stats}>
-        <ResourceStat label="Power" value="—" kind="power" />
-        <ResourceStat label="Credits" value="—" kind="credits" />
-      </View>
-      <CommandCard
-        title="Command Center"
-        subtitle="Route shell — no live data yet"
-        statusLabel="IDLE"
-      />
-      <PrimaryCTAButton
-        label="Initialize Profile"
-        variant="default"
-        onPress={() => router.push("/training-profile")}
-      />
-    </ScreenShell>
+    <View style={styles.container}>
+      <Text style={styles.title}>Overload</Text>
+      <Text style={styles.subtitle}>Expo app shell</Text>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stats: {
-    flexDirection: "row",
-    gap: spacing.xl,
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.background.primary,
+    padding: spacing.xl,
+  },
+  title: {
+    ...typography.title,
+    color: colors.text.primary,
+  },
+  subtitle: {
+    ...typography.body,
+    color: colors.text.secondary,
+    marginTop: spacing.sm,
   },
 });

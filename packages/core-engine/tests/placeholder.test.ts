@@ -1,12 +1,17 @@
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { CORE_ENGINE_VERSION, placeholder } from "../src/index";
+
+const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("core-engine foundation", () => {
-  it("exports version", () => {
-    expect(CORE_ENGINE_VERSION).toBe("0.0.0");
+  it("exposes an empty public entrypoint", () => {
+    const source = readFileSync(join(packageRoot, "src/index.ts"), "utf8");
+    expect(source).toMatch(/export\s*\{\s*\}\s*;/);
   });
 
   it("runs vitest", () => {
-    expect(placeholder()).toBe(true);
+    expect(true).toBe(true);
   });
 });
