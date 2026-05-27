@@ -47,7 +47,7 @@ jobs:
             const issueId = match ? match[0].toUpperCase() : "linked Linear issue";
 
             const comment = [
-              `@codex Review this PR for ${issueId}.`,
+              `@codex review`,
               ``,
               `You are QA only.`,
               ``,
