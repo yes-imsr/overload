@@ -1,0 +1,20 @@
+{
+  "name": "overload",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Overload — mobile workout tracker fused with idle progression",
+  "scripts": {
+    "mobile": "pnpm --filter @overload/mobile start",
+    "mobile:android": "pnpm --filter @overload/mobile android",
+    "mobile:ios": "pnpm --filter @overload/mobile ios",
+    "mobile:web": "pnpm --filter @overload/mobile web",
+    "test": "pnpm --filter @overload/core-engine test",
+    "test:watch": "pnpm --filter @overload/core-engine test:watch",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm -r lint --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

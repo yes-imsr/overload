@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Overload",
+    "slug": "overload",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "overload",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#040F16"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.overload.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#040F16"
+      },
+      "package": "com.overload.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
