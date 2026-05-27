@@ -6,9 +6,9 @@ import { describe, expect, it } from "vitest";
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 describe("core-engine foundation", () => {
-  it("exposes an empty public entrypoint", () => {
+  it("exposes workout helpers and models from the public entrypoint", () => {
     const source = readFileSync(join(packageRoot, "src/index.ts"), "utf8");
-    expect(source).toMatch(/export\s*\{\s*\}\s*;/);
+    expect(source).toMatch(/export \* from "\.\/workouts\/index";/);
   });
 
   it("runs vitest", () => {
