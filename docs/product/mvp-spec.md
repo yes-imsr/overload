@@ -92,9 +92,6 @@ The following are not MVP:
 - Multiple debuff types.
 - Complex node trees.
 - Complex anti-cheat.
-- Photo verification.
-- Public rankings.
-- AI coaching chat.
 - Advanced analytics.
 - Public prestige stats.
 
@@ -180,7 +177,6 @@ Codex should fail PRs when:
 
 - Product brief: `docs/product/OVERLOAD_PRODUCT_BRIEF.md`
 - Engineering MVP scope: `docs/dev/MVP_SCOPE.md`
-- Architecture boundaries: `docs/architecture/system-boundaries.md`
 - Architecture plan: `docs/architecture/ARCHON_ARCHITECTURE.md`
 - Design system: `docs/design/DESIGN_SYSTEM.md`
 - QA docs: `docs/qa/`
