@@ -36,3 +36,10 @@ from pg_policies
 where schemaname = 'public'
 group by schemaname, tablename
 order by tablename;
+
+-- 5. OVR-16: profiles + equipment policies present
+select tablename, policyname
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('profiles', 'equipment')
+order by tablename, policyname;
