@@ -1,4 +1,4 @@
-import { Link } from "expo-router";
+import { useRouter } from "expo-router";
 import { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing, typography } from "@/tokens";
@@ -31,6 +31,8 @@ export function PlaceholderScreen({
   navigation,
   children,
 }: PlaceholderScreenProps) {
+  const router = useRouter();
+
   return (
     <View style={styles.container}>
       <View style={styles.panel}>
@@ -43,16 +45,20 @@ export function PlaceholderScreen({
       <View style={styles.navPanel}>
         <Text style={styles.navTitle}>Route matrix</Text>
         <View style={styles.navGrid}>
-          {navigation.map((item) => (
-            <Link key={item.href} href={item.href} asChild>
+          {navigation.map((item) => {
+            const tone = item.tone ?? "standard";
+
+            return (
               <Pressable
+                key={item.href}
                 accessibilityRole="button"
-                style={[styles.navButton, toneStyles[item.tone ?? "standard"]]}
+                onPress={() => router.push(item.href)}
+                style={StyleSheet.flatten([styles.navButton, toneStyles[tone]])}
               >
                 <Text style={styles.navButtonText}>{item.label}</Text>
               </Pressable>
-            </Link>
-          ))}
+            );
+          })}
         </View>
       </View>
     </View>
