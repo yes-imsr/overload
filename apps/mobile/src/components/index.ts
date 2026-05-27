@@ -5,3 +5,4 @@ export {
   CalibrationBadge,
   type CalibrationUiState,
 } from "./CalibrationBadge";
+export { RPESelector, type EffortLevel } from "./RPESelector";
