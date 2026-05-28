@@ -133,6 +133,48 @@ create trigger workout_templates_set_updated_at
   for each row execute function public.set_updated_at();
 
 -- ---------------------------------------------------------------------------
+-- workout_template_exercises
+-- ---------------------------------------------------------------------------
+create table public.workout_template_exercises (
+  id uuid primary key default gen_random_uuid(),
+  template_id uuid not null references public.workout_templates (id) on delete cascade,
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  exercise_id uuid not null references public.exercises (id),
+  equipment_id uuid references public.equipment (id),
+  exercise_order int not null check (exercise_order >= 1),
+  target_sets int
+    check (target_sets is null or (target_sets >= 1 and target_sets <= 20)),
+  target_reps_min int
+    check (target_reps_min is null or (target_reps_min >= 1 and target_reps_min <= 200)),
+  target_reps_max int
+    check (target_reps_max is null or (target_reps_max >= 1 and target_reps_max <= 200)),
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint workout_template_exercises_reps_range
+    check (
+      target_reps_min is null
+      or target_reps_max is null
+      or target_reps_max >= target_reps_min
+    )
+);
+
+create unique index workout_template_exercises_order_unique
+  on public.workout_template_exercises (template_id, exercise_order);
+
+create index workout_template_exercises_user_id_idx
+  on public.workout_template_exercises (user_id);
+create index workout_template_exercises_exercise_id_idx
+  on public.workout_template_exercises (exercise_id);
+create index workout_template_exercises_equipment_id_idx
+  on public.workout_template_exercises (equipment_id)
+  where equipment_id is not null;
+
+create trigger workout_template_exercises_set_updated_at
+  before update on public.workout_template_exercises
+  for each row execute function public.set_updated_at();
+
+-- ---------------------------------------------------------------------------
 -- workout_sessions
 -- ---------------------------------------------------------------------------
 create table public.workout_sessions (

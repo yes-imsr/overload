@@ -91,6 +91,52 @@ create policy workout_templates_delete_own
   using (auth.uid() = user_id);
 
 -- ---------------------------------------------------------------------------
+-- workout_template_exercises
+-- ---------------------------------------------------------------------------
+alter table public.workout_template_exercises enable row level security;
+
+create policy workout_template_exercises_select_own
+  on public.workout_template_exercises for select
+  using (auth.uid() = user_id);
+
+create policy workout_template_exercises_insert_own_template
+  on public.workout_template_exercises for insert
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.workout_templates wt
+      where wt.id = template_id
+        and wt.user_id = auth.uid()
+    )
+  );
+
+create policy workout_template_exercises_update_own_template
+  on public.workout_template_exercises for update
+  using (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.workout_templates wt
+      where wt.id = template_id
+        and wt.user_id = auth.uid()
+    )
+  )
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.workout_templates wt
+      where wt.id = template_id
+        and wt.user_id = auth.uid()
+    )
+  );
+
+create policy workout_template_exercises_delete_own
+  on public.workout_template_exercises for delete
+  using (auth.uid() = user_id);
+
+-- ---------------------------------------------------------------------------
 -- workout_sessions (client may not complete via direct update — enforced by trigger)
 -- ---------------------------------------------------------------------------
 alter table public.workout_sessions enable row level security;
