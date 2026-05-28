@@ -10,7 +10,7 @@ export default function ProfileRoute() {
         { label: "Home console", href: "/home" },
         { label: "Workout bay", href: "/workouts", tone: "success" },
         { label: "Credits console", href: "/economy", tone: "economy" },
-        { label: "Onboarding", href: "/onboarding" },
+        { label: "Welcome", href: "/welcome" },
       ]}
     />
   );

@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing, typography } from "@/tokens";
 
 export type RouteHref =
-  | "/onboarding"
+  | "/welcome"
   | "/home"
   | "/workouts"
   | "/economy"

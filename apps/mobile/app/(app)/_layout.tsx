@@ -1,7 +1,14 @@
-import { Tabs } from "expo-router";
+import { Redirect, Tabs } from "expo-router";
+import { useOnboardingRedirect } from "@/hooks/use-onboarding-redirect";
 import { colors, spacing, typography } from "@/tokens";
 
 export default function MainAppLayout() {
+  const redirect = useOnboardingRedirect({ guardApp: true });
+
+  if (redirect) {
+    return <Redirect href={redirect} />;
+  }
+
   return (
     <Tabs
       screenOptions={{

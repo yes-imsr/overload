@@ -17,7 +17,7 @@ export default function WorkoutsRoute() {
         { label: "Home console", href: "/home" },
         { label: "Credits console", href: "/economy", tone: "economy" },
         { label: "Profile", href: "/profile" },
-        { label: "Onboarding", href: "/onboarding" },
+        { label: "Welcome", href: "/welcome" },
       ]}
     >
       <View style={styles.draftPanel}>

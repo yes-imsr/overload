@@ -10,7 +10,7 @@ export default function EconomyRoute() {
         { label: "Home console", href: "/home" },
         { label: "Workout bay", href: "/workouts", tone: "success" },
         { label: "Profile", href: "/profile" },
-        { label: "Onboarding", href: "/onboarding" },
+        { label: "Welcome", href: "/welcome" },
       ]}
     />
   );
