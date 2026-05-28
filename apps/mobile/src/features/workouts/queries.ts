@@ -81,9 +81,20 @@ export function useStarterTemplate(userId: string | undefined) {
         throw rowsError;
       }
 
+      const exercises = (rows ?? []).map((row) => {
+        const exercise = Array.isArray(row.exercise) ? row.exercise[0] : row.exercise;
+        if (!exercise) {
+          throw new Error("Starter template exercise is missing exercise metadata");
+        }
+        return {
+          ...row,
+          exercise,
+        } as WorkoutTemplateExercise;
+      });
+
       return {
         template,
-        exercises: (rows ?? []) as WorkoutTemplateExercise[],
+        exercises,
       };
     },
   });
