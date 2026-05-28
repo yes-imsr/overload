@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { CalibrationBadge, FormField, PrimaryCTAButton, RPESelector } from "@/components";
 import { useAuthSession } from "@/features/onboarding/queries";
+import { formatTargetSummary } from "@/features/workouts/progression-labels";
 import { useCompleteWorkoutSession } from "@/features/workouts/queries";
 import { toCalibrationUiState } from "@overload/core-engine";
 import { ScreenShell } from "@/screens/ScreenShell";
@@ -117,8 +118,12 @@ export default function ActiveWorkoutScreen() {
         <View style={styles.targetRow}>
           <Text style={styles.targetLabel}>TARGET</Text>
           <Text style={styles.targetValue}>
-            {currentExercise.targetSets} sets · {currentExercise.targetRepMin}-
-            {currentExercise.targetRepMax} reps
+            {currentExercise.targetSets} sets ·{" "}
+            {formatTargetSummary(
+              currentExercise.plannedWeight,
+              currentExercise.targetRepMin,
+              currentExercise.targetRepMax,
+            )}
           </Text>
         </View>
 
