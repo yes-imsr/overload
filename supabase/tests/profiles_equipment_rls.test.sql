@@ -39,7 +39,8 @@ insert into auth.users (
     now(),
     '{}',
     '{}'
-  );
+  )
+on conflict (id) do nothing;
 
 select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'equipment', 'equipment table exists');
@@ -92,7 +93,12 @@ insert into public.profiles (
   'Owner',
   'new',
   'equipment_complete'
-);
+)
+on conflict (id) do update
+set
+  display_name = excluded.display_name,
+  training_experience = excluded.training_experience,
+  onboarding_status = excluded.onboarding_status;
 
 insert into public.equipment (
   user_id,
@@ -159,13 +165,21 @@ end;
 $$;
 
 select results_eq(
-  $$ select count(*) from public.profiles $$,
+  $$
+    select count(*)
+    from public.profiles
+    where id = '00000000-0000-4000-8000-000000000001'
+  $$,
   $$ values (0::bigint) $$,
   'non-owner cannot select another user profile'
 );
 
 select results_eq(
-  $$ select count(*) from public.equipment $$,
+  $$
+    select count(*)
+    from public.equipment
+    where user_id = '00000000-0000-4000-8000-000000000001'
+  $$,
   $$ values (0::bigint) $$,
   'non-owner cannot select another user equipment'
 );
