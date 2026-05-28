@@ -1,12 +1,11 @@
+import {
+  getCalibrationUiLabel,
+  type CalibrationState,
+} from "@overload/core-engine";
 import { StyleSheet, Text, View } from "react-native";
 import { colors, radius, spacing, typography } from "@/tokens";
 
-/** Internal calibration states map to these UI labels in product rules. */
-export type CalibrationUiState =
-  | "learning"
-  | "calibrating"
-  | "stable"
-  | "stale";
+export type CalibrationUiState = CalibrationState;
 
 type Props = {
   state: CalibrationUiState;
@@ -14,32 +13,29 @@ type Props = {
 
 const config: Record<
   CalibrationUiState,
-  { label: string; background: string; text: string }
+  { background: string; text: string }
 > = {
-  learning: {
-    label: "Learning",
+  uncalibrated: {
     background: colors.background.surface,
     text: colors.text.secondary,
   },
-  calibrating: {
-    label: "Calibrating",
+  provisional: {
     background: colors.background.surface,
     text: colors.accent.power,
   },
-  stable: {
-    label: "Stable",
+  calibrated: {
     background: colors.accent.successMuted,
     text: colors.text.primary,
   },
   stale: {
-    label: "Stale",
     background: colors.accent.danger,
     text: colors.text.primary,
   },
 };
 
 export function CalibrationBadge({ state }: Props) {
-  const { label, background, text } = config[state];
+  const { background, text } = config[state];
+  const label = getCalibrationUiLabel(state);
 
   return (
     <View style={[styles.badge, { backgroundColor: background }]}>

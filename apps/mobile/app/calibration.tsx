@@ -10,9 +10,9 @@ export default function CalibrationScreen() {
       subtitle="Exercise readiness states — display only."
     >
       <View style={styles.badges}>
-        <CalibrationBadge state="learning" />
-        <CalibrationBadge state="calibrating" />
-        <CalibrationBadge state="stable" />
+        <CalibrationBadge state="uncalibrated" />
+        <CalibrationBadge state="provisional" />
+        <CalibrationBadge state="calibrated" />
         <CalibrationBadge state="stale" />
       </View>
     </ScreenShell>

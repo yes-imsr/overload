@@ -10,7 +10,7 @@ export default function ActiveWorkoutScreen() {
       subtitle="Set logger shell — logging flow not implemented."
     >
       <View style={styles.row}>
-        <CalibrationBadge state="learning" />
+        <CalibrationBadge state="uncalibrated" />
       </View>
       <PrimaryCTAButton label="Complete Set" disabled />
     </ScreenShell>
