@@ -129,13 +129,13 @@ export default function ActiveWorkoutScreen() {
           label="Weight (lb)"
           keyboardType="decimal-pad"
           value={currentSet.weight}
-          onChangeText={(weight) => updateCurrentSet({ weight })}
+          onChangeText={(weight: string) => updateCurrentSet({ weight })}
         />
         <FormField
           label="Reps"
           keyboardType="number-pad"
           value={currentSet.reps}
-          onChangeText={(reps) => updateCurrentSet({ reps })}
+          onChangeText={(reps: string) => updateCurrentSet({ reps })}
         />
 
         <View style={styles.effortBlock}>
