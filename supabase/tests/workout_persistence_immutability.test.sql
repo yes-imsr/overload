@@ -128,8 +128,9 @@ cross join lateral (
 where wt.user_id = '00000000-0000-4000-8000-000000000010'
   and wt.name = 'Push Day';
 
-insert into public.workout_sessions (user_id, status, started_at)
+insert into public.workout_sessions (id, user_id, status, started_at)
 values (
+  '10000000-0000-4000-8000-000000000010',
   '00000000-0000-4000-8000-000000000010',
   'draft',
   now()
@@ -281,6 +282,20 @@ select results_eq(
 
 select throws_ok(
   $$
+    insert into public.workout_sessions (user_id, status, started_at)
+    values (
+      '00000000-0000-4000-8000-000000000010',
+      'draft',
+      now()
+    )
+  $$,
+  '42501',
+  'new row violates row-level security policy for table "workout_sessions"',
+  'non-owner cannot insert another user workout session'
+);
+
+select throws_ok(
+  $$
     insert into public.workout_sets (
       session_id,
       user_id,
@@ -290,21 +305,18 @@ select throws_ok(
       reps
     )
     select
-      ws.id,
+      '10000000-0000-4000-8000-000000000010',
       '00000000-0000-4000-8000-000000000011',
       e.id,
       99,
       50,
       5
-    from public.workout_sessions ws
-    cross join lateral (
-      select id from public.exercises where is_builtin = true limit 1
-    ) e
-    where ws.user_id = '00000000-0000-4000-8000-000000000010'
+    from public.exercises e
+    where e.is_builtin = true
     limit 1
   $$,
-  '42501',
-  'new row violates row-level security policy for table "workout_sets"',
+  'P0001',
+  null,
   'non-owner cannot insert sets on another user session'
 );
 
