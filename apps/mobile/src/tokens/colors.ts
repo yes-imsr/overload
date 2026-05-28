@@ -37,4 +37,13 @@ export const colors = {
   },
 } as const;
 
+/** MVP semantic palette names (OVR-13). Prefer `colors.*` in components. */
+export const palette = {
+  black: colors.background.primary,
+  offWhite: colors.text.primary,
+  creditYellow: colors.accent.credits,
+  burgundy: colors.accent.danger,
+  calibrationGreen: colors.accent.success,
+} as const;
+
 export type Colors = typeof colors;
