@@ -9,7 +9,7 @@ where schemaname = 'public'
   and tablename in (
     'profiles', 'equipment', 'exercises', 'workout_templates',
     'workout_template_exercises', 'workout_sessions', 'workout_sets',
-    'game_state', 'game_events',
+    'exercise_calibrations', 'game_state', 'game_events', 'nodes', 'user_nodes',
     'debuffs', 'prestige_attempts'
   )
 order by tablename;
@@ -22,7 +22,7 @@ where n.nspname = 'public'
   and c.relname in (
     'profiles', 'equipment', 'exercises', 'workout_templates',
     'workout_template_exercises', 'workout_sessions', 'workout_sets',
-    'game_state', 'game_events',
+    'exercise_calibrations', 'game_state', 'game_events', 'nodes', 'user_nodes',
     'debuffs', 'prestige_attempts'
   )
 order by c.relname;
