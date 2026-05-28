@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(18);
+select plan(24);
 
 insert into auth.users (
   id,
@@ -75,6 +75,11 @@ select ok(
 );
 
 select ok(
+  (select relrowsecurity from pg_class where oid = 'public.exercise_calibrations'::regclass),
+  'exercise_calibrations has RLS enabled'
+);
+
+select ok(
   (select relrowsecurity from pg_class where oid = 'public.user_nodes'::regclass),
   'user_nodes has RLS enabled'
 );
@@ -84,6 +89,72 @@ values
   ('00000000-0000-4000-8000-000000000020', 'Owner', 'new', 'equipment_complete'),
   ('00000000-0000-4000-8000-000000000021', 'Other', 'new', 'equipment_complete')
 on conflict (id) do nothing;
+
+insert into public.exercises (id, user_id, name, is_builtin)
+values
+  (
+    '20000000-0000-4000-8000-000000000020',
+    '00000000-0000-4000-8000-000000000020',
+    'Owner Custom Lift',
+    false
+  ),
+  (
+    '20000000-0000-4000-8000-000000000021',
+    '00000000-0000-4000-8000-000000000020',
+    'Owner Cascade Lift',
+    false
+  ),
+  (
+    '20000000-0000-4000-8000-000000000022',
+    '00000000-0000-4000-8000-000000000021',
+    'Other Custom Lift',
+    false
+  );
+
+insert into public.exercise_calibrations (user_id, exercise_id, calibration_status)
+values
+  (
+    '00000000-0000-4000-8000-000000000020',
+    '20000000-0000-4000-8000-000000000020',
+    'provisional'
+  ),
+  (
+    '00000000-0000-4000-8000-000000000020',
+    '20000000-0000-4000-8000-000000000021',
+    'provisional'
+  );
+
+select throws_ok(
+  $$
+    insert into public.exercise_calibrations (user_id, exercise_id, calibration_status)
+    values (
+      '00000000-0000-4000-8000-000000000020',
+      '20000000-0000-4000-8000-000000000022',
+      'provisional'
+    )
+  $$,
+  'P0001',
+  'exercise_calibrations.user_id must match custom exercise owner',
+  'custom exercise calibrations must belong to the exercise owner'
+);
+
+select lives_ok(
+  $$
+    delete from public.exercises
+    where id = '20000000-0000-4000-8000-000000000021'
+  $$,
+  'deleting a custom exercise cascades calibration rows'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.exercise_calibrations
+    where exercise_id = '20000000-0000-4000-8000-000000000021'
+  $$,
+  $$ values (0::bigint) $$,
+  'deleted custom exercise leaves no calibration rows'
+);
 
 insert into public.user_nodes (user_id, node_id, is_unlocked, level, unlocked_at)
 select
@@ -132,6 +203,12 @@ select results_eq(
   'owner can read own user_nodes'
 );
 
+select results_eq(
+  $$ select count(*) from public.exercise_calibrations $$,
+  $$ values (1::bigint) $$,
+  'owner can read own exercise_calibrations'
+);
+
 do $$
 begin
   perform set_config(
@@ -148,7 +225,11 @@ end;
 $$;
 
 select results_eq(
-  $$ select count(*) from public.game_state $$,
+  $$
+    select count(*)
+    from public.game_state
+    where user_id = '00000000-0000-4000-8000-000000000020'
+  $$,
   $$ values (0::bigint) $$,
   'non-owner cannot read another user game_state'
 );
@@ -157,6 +238,16 @@ select results_eq(
   $$ select count(*) from public.user_nodes $$,
   $$ values (0::bigint) $$,
   'non-owner cannot read another user user_nodes'
+);
+
+select results_eq(
+  $$
+    select count(*)
+    from public.exercise_calibrations
+    where user_id = '00000000-0000-4000-8000-000000000020'
+  $$,
+  $$ values (0::bigint) $$,
+  'non-owner cannot read another user exercise_calibrations'
 );
 
 select throws_ok(

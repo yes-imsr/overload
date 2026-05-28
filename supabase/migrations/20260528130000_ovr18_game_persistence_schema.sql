@@ -6,7 +6,7 @@
 create table public.exercise_calibrations (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.profiles (id) on delete cascade,
-  exercise_id uuid not null references public.exercises (id),
+  exercise_id uuid not null references public.exercises (id) on delete cascade,
   calibration_status text not null default 'uncalibrated'
     check (calibration_status in ('uncalibrated', 'provisional', 'calibrated', 'stale')),
   calibrated_at timestamptz,
@@ -26,6 +26,35 @@ create index exercise_calibrations_exercise_id_idx
 create trigger exercise_calibrations_set_updated_at
   before update on public.exercise_calibrations
   for each row execute function public.set_updated_at();
+
+create or replace function public.enforce_exercise_calibration_exercise_ownership()
+returns trigger
+language plpgsql
+as $$
+declare
+  exercise_owner uuid;
+  exercise_is_builtin boolean;
+begin
+  select e.user_id, e.is_builtin
+  into exercise_owner, exercise_is_builtin
+  from public.exercises e
+  where e.id = new.exercise_id;
+
+  if exercise_is_builtin is null then
+    raise exception 'exercise % not found', new.exercise_id;
+  end if;
+
+  if exercise_is_builtin = false and new.user_id is distinct from exercise_owner then
+    raise exception 'exercise_calibrations.user_id must match custom exercise owner';
+  end if;
+
+  return new;
+end;
+$$;
+
+create trigger exercise_calibrations_enforce_exercise_ownership
+  before insert or update on public.exercise_calibrations
+  for each row execute function public.enforce_exercise_calibration_exercise_ownership();
 
 -- ---------------------------------------------------------------------------
 -- nodes (global MVP catalog — tiny linear chain)

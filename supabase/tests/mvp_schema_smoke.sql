@@ -1,40 +1,101 @@
--- OVERLOAD-001B: manual smoke checks (run after supabase db reset)
--- Usage: supabase db execute --file supabase/tests/mvp_schema_smoke.sql
--- Or paste sections into Supabase Studio SQL editor.
+-- OVERLOAD-001B: MVP schema smoke checks for supabase test db.
 
--- 1. Tables exist
-select tablename
-from pg_tables
-where schemaname = 'public'
-  and tablename in (
-    'profiles', 'equipment', 'exercises', 'workout_templates',
-    'workout_template_exercises', 'workout_sessions', 'workout_sets',
-    'exercise_calibrations', 'game_state', 'game_events', 'nodes', 'user_nodes',
-    'debuffs', 'prestige_attempts'
-  )
-order by tablename;
+begin;
 
--- 2. RLS enabled on all MVP tables
-select c.relname as table_name, c.relrowsecurity as rls_enabled
-from pg_class c
-join pg_namespace n on n.oid = c.relnamespace
-where n.nspname = 'public'
-  and c.relname in (
-    'profiles', 'equipment', 'exercises', 'workout_templates',
-    'workout_template_exercises', 'workout_sessions', 'workout_sets',
-    'exercise_calibrations', 'game_state', 'game_events', 'nodes', 'user_nodes',
-    'debuffs', 'prestige_attempts'
-  )
-order by c.relname;
+create extension if not exists pgtap with schema extensions;
 
--- 3. Built-in exercises seeded
-select count(*) as builtin_count
-from public.exercises
-where is_builtin = true and user_id is null;
+select plan(4);
 
--- 4. Policy count (expect >= 1 per user-owned table)
-select schemaname, tablename, count(*) as policy_count
-from pg_policies
-where schemaname = 'public'
-group by schemaname, tablename
-order by tablename;
+select set_eq(
+  $$
+    select tablename::text
+    from pg_tables
+    where schemaname = 'public'
+      and tablename in (
+        'profiles', 'equipment', 'exercises', 'workout_templates',
+        'workout_template_exercises', 'workout_sessions', 'workout_sets',
+        'exercise_calibrations', 'game_state', 'game_events', 'nodes', 'user_nodes',
+        'debuffs', 'prestige_attempts'
+      )
+  $$,
+  $$
+    values
+      ('profiles'::text),
+      ('equipment'::text),
+      ('exercises'::text),
+      ('workout_templates'::text),
+      ('workout_template_exercises'::text),
+      ('workout_sessions'::text),
+      ('workout_sets'::text),
+      ('exercise_calibrations'::text),
+      ('game_state'::text),
+      ('game_events'::text),
+      ('nodes'::text),
+      ('user_nodes'::text),
+      ('debuffs'::text),
+      ('prestige_attempts'::text)
+  $$,
+  'MVP persistence tables exist'
+);
+
+select is_empty(
+  $$
+    select c.relname
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname in (
+        'profiles', 'equipment', 'exercises', 'workout_templates',
+        'workout_template_exercises', 'workout_sessions', 'workout_sets',
+        'exercise_calibrations', 'game_state', 'game_events', 'nodes', 'user_nodes',
+        'debuffs', 'prestige_attempts'
+      )
+      and c.relrowsecurity = false
+  $$,
+  'RLS is enabled on all MVP persistence tables'
+);
+
+select cmp_ok(
+  (
+    select count(*)::integer
+    from public.exercises
+    where is_builtin = true and user_id is null
+  ),
+  '>=',
+  1,
+  'built-in exercises are seeded'
+);
+
+select is_empty(
+  $$
+    with expected(tablename) as (
+      values
+        ('profiles'),
+        ('equipment'),
+        ('exercises'),
+        ('workout_templates'),
+        ('workout_template_exercises'),
+        ('workout_sessions'),
+        ('workout_sets'),
+        ('exercise_calibrations'),
+        ('game_state'),
+        ('game_events'),
+        ('nodes'),
+        ('user_nodes'),
+        ('debuffs'),
+        ('prestige_attempts')
+    )
+    select e.tablename
+    from expected e
+    left join pg_policies p
+      on p.schemaname = 'public'
+      and p.tablename = e.tablename
+    group by e.tablename
+    having count(p.policyname) = 0
+  $$,
+  'MVP persistence tables have RLS policies'
+);
+
+select * from finish();
+
+rollback;

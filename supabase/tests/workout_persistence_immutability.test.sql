@@ -39,7 +39,8 @@ insert into auth.users (
     now(),
     '{}',
     '{}'
-  );
+  )
+on conflict (id) do nothing;
 
 select has_table('public', 'exercises', 'exercises table exists');
 select has_table('public', 'workout_templates', 'workout_templates table exists');
@@ -180,38 +181,36 @@ select lives_ok(
   'owner can update sets on draft session'
 );
 
-do $$
-declare
-  session_id uuid;
-begin
-  select id into session_id
-  from public.workout_sessions
-  where user_id = '00000000-0000-4000-8000-000000000010'
-    and status = 'draft'
-  limit 1;
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-000000000010","role":"service_role"}',
+  true
+);
 
-  perform set_config(
-    'request.jwt.claims',
-    '{"sub":"00000000-0000-4000-8000-000000000010","role":"service_role"}',
-    true
-  );
+reset role;
 
-  update public.workout_sessions
-  set
-    status = 'completed',
-    completed_at = now(),
-    total_volume = 1080,
-    power_awarded = 12,
-    credits_awarded = 3
-  where id = session_id;
+update public.workout_sessions
+set
+  status = 'completed',
+  completed_at = now(),
+  total_volume = 1080,
+  power_awarded = 12,
+  credits_awarded = 3
+where id = '10000000-0000-4000-8000-000000000010';
 
-  perform set_config(
-    'request.jwt.claims',
-    '{"sub":"00000000-0000-4000-8000-000000000010","role":"authenticated"}',
-    true
-  );
-end;
-$$;
+set local role authenticated;
+
+select set_config(
+  'request.jwt.claim.sub',
+  '00000000-0000-4000-8000-000000000010',
+  true
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"00000000-0000-4000-8000-000000000010","role":"authenticated"}',
+  true
+);
 
 select throws_ok(
   $$

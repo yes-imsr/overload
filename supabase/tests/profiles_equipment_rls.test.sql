@@ -39,7 +39,8 @@ insert into auth.users (
     now(),
     '{}',
     '{}'
-  );
+  )
+on conflict (id) do nothing;
 
 select has_table('public', 'profiles', 'profiles table exists');
 select has_table('public', 'equipment', 'equipment table exists');
@@ -92,7 +93,12 @@ insert into public.profiles (
   'Owner',
   'new',
   'equipment_complete'
-);
+)
+on conflict (id) do update
+set
+  display_name = excluded.display_name,
+  training_experience = excluded.training_experience,
+  onboarding_status = excluded.onboarding_status;
 
 insert into public.equipment (
   user_id,
