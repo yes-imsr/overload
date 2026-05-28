@@ -14,9 +14,9 @@ export default function WorkoutsRoute() {
       title="Workout bay"
       body="Placeholder route for active workout logging. Local Zustand state is limited to an in-progress draft; completed sessions and game outcomes remain server-owned."
       navigation={[
-        { label: "Home console", href: "/home" },
-        { label: "Credits console", href: "/economy", tone: "economy" },
-        { label: "Profile", href: "/profile" },
+        { label: "Home console", href: "/(app)/home" },
+        { label: "Credits console", href: "/(app)/economy", tone: "economy" },
+        { label: "Profile", href: "/(app)/profile" },
         { label: "Welcome", href: "/welcome" },
       ]}
     >

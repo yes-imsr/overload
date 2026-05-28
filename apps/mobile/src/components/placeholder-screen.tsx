@@ -5,7 +5,10 @@ import { colors, radius, spacing, typography } from "@/tokens";
 
 export type RouteHref =
   | "/welcome"
-  | "/home"
+  | "/(app)/home"
+  | "/(app)/workouts"
+  | "/(app)/economy"
+  | "/(app)/profile"
   | "/workouts"
   | "/economy"
   | "/profile";

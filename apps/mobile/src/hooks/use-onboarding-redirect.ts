@@ -1,4 +1,5 @@
 import {
+  APP_HOME_ROUTE,
   isOnboardingComplete,
   resolveOnboardingRoute,
   type OnboardingRoute,
@@ -11,7 +12,14 @@ type Options = {
   guardApp?: boolean;
 };
 
-export function useOnboardingRedirect(options: Options = {}): OnboardingRoute | null {
+export type OnboardingRedirectState = {
+  redirect: OnboardingRoute | null;
+  isLoading: boolean;
+};
+
+export function useOnboardingRedirectState(
+  options: Options = {},
+): OnboardingRedirectState {
   const { guardApp = false } = options;
   const sessionQuery = useAuthSession();
   const userId = sessionQuery.data?.user.id;
@@ -21,11 +29,11 @@ export function useOnboardingRedirect(options: Options = {}): OnboardingRoute | 
     sessionQuery.isLoading || (Boolean(userId) && profileQuery.isLoading);
 
   if (isLoading) {
-    return null;
+    return { redirect: null, isLoading: true };
   }
 
   if (!isSupabaseConfigured()) {
-    return "/welcome";
+    return { redirect: "/welcome", isLoading: false };
   }
 
   const route = resolveOnboardingRoute({
@@ -36,10 +44,17 @@ export function useOnboardingRedirect(options: Options = {}): OnboardingRoute | 
 
   if (guardApp) {
     if (isOnboardingComplete(profileQuery.data?.onboarding_status)) {
-      return null;
+      return { redirect: null, isLoading: false };
     }
-    return route === "/home" ? "/training-profile" : route;
+    return {
+      redirect: route === APP_HOME_ROUTE ? "/training-profile" : route,
+      isLoading: false,
+    };
   }
 
-  return route;
+  return { redirect: route, isLoading: false };
+}
+
+export function useOnboardingRedirect(options: Options = {}): OnboardingRoute | null {
+  return useOnboardingRedirectState(options).redirect;
 }

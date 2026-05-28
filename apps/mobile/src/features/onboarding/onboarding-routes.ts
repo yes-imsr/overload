@@ -1,11 +1,13 @@
 import type { OnboardingStatus } from "@/types/database";
 
+export const APP_HOME_ROUTE = "/(app)/home" as const;
+
 export type OnboardingRoute =
   | "/welcome"
   | "/sign-in"
   | "/training-profile"
   | "/equipment"
-  | "/home";
+  | typeof APP_HOME_ROUTE;
 
 export function resolveOnboardingRoute(input: {
   hasSession: boolean;
@@ -30,7 +32,7 @@ export function resolveOnboardingRoute(input: {
     return "/equipment";
   }
 
-  return "/home";
+  return APP_HOME_ROUTE;
 }
 
 export function isOnboardingComplete(status: OnboardingStatus | null | undefined): boolean {

@@ -1,9 +1,18 @@
 import { Redirect, Tabs } from "expo-router";
-import { useOnboardingRedirect } from "@/hooks/use-onboarding-redirect";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useOnboardingRedirectState } from "@/hooks/use-onboarding-redirect";
 import { colors, spacing, typography } from "@/tokens";
 
 export default function MainAppLayout() {
-  const redirect = useOnboardingRedirect({ guardApp: true });
+  const { redirect, isLoading } = useOnboardingRedirectState({ guardApp: true });
+
+  if (isLoading) {
+    return (
+      <View style={styles.loading}>
+        <ActivityIndicator color={colors.text.primary} />
+      </View>
+    );
+  }
 
   if (redirect) {
     return <Redirect href={redirect} />;
@@ -34,3 +43,12 @@ export default function MainAppLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.background.primary,
+  },
+});

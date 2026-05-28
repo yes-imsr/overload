@@ -8,9 +8,9 @@ export default function HomeRoute() {
       body="Placeholder dashboard for the MVP loop. Server-owned workout history, progression, Power, Credits, nodes, debuffs, and prestige state stay outside local UI state."
       navigation={[
         { label: "Welcome", href: "/welcome" },
-        { label: "Workout bay", href: "/workouts", tone: "success" },
-        { label: "Credits console", href: "/economy", tone: "economy" },
-        { label: "Profile", href: "/profile" },
+        { label: "Workout bay", href: "/(app)/workouts", tone: "success" },
+        { label: "Credits console", href: "/(app)/economy", tone: "economy" },
+        { label: "Profile", href: "/(app)/profile" },
       ]}
     />
   );

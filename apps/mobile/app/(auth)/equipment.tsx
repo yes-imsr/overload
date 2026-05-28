@@ -5,6 +5,7 @@ import { PrimaryCTAButton } from "@/components";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { OptionChip } from "@/components/OptionChip";
 import { EQUIPMENT_PRESETS } from "@/features/onboarding/constants";
+import { APP_HOME_ROUTE } from "@/features/onboarding/onboarding-routes";
 import {
   useAuthSession,
   useEquipment,
@@ -62,7 +63,7 @@ export default function EquipmentScreen() {
 
     try {
       await saveEquipment.mutateAsync(selectedKeys);
-      router.replace("/home");
+      router.replace(APP_HOME_ROUTE);
     } catch (caught) {
       const message =
         caught instanceof Error ? caught.message : "Could not save equipment.";
