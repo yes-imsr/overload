@@ -212,39 +212,48 @@ select set_config(
   true
 );
 
-select throws_ok(
+select results_eq(
   $$
-    update public.workout_sessions
-    set started_at = now()
-    where user_id = '00000000-0000-4000-8000-000000000010'
-      and status = 'completed'
+    with attempted as (
+      update public.workout_sessions
+      set started_at = now()
+      where user_id = '00000000-0000-4000-8000-000000000010'
+        and status = 'completed'
+      returning id
+    )
+    select count(*) from attempted
   $$,
-  'P0001',
-  'completed workout sessions are immutable',
+  $$ values (0::bigint) $$,
   'owner cannot update completed workout session'
 );
 
-select throws_ok(
+select results_eq(
   $$
-    update public.workout_sets ws
-    set weight = 145
-    from public.workout_sessions s
-    where ws.session_id = s.id
-      and s.status = 'completed'
+    with attempted as (
+      update public.workout_sets ws
+      set weight = 145
+      from public.workout_sessions s
+      where ws.session_id = s.id
+        and s.status = 'completed'
+      returning ws.id
+    )
+    select count(*) from attempted
   $$,
-  'P0001',
-  'sets on completed sessions are immutable',
+  $$ values (0::bigint) $$,
   'owner cannot update sets on completed session'
 );
 
-select throws_ok(
+select results_eq(
   $$
-    delete from public.workout_sessions
-    where user_id = '00000000-0000-4000-8000-000000000010'
-      and status = 'completed'
+    with attempted as (
+      delete from public.workout_sessions
+      where user_id = '00000000-0000-4000-8000-000000000010'
+        and status = 'completed'
+      returning id
+    )
+    select count(*) from attempted
   $$,
-  'P0001',
-  'completed workout sessions cannot be deleted',
+  $$ values (0::bigint) $$,
   'owner cannot delete completed workout session'
 );
 

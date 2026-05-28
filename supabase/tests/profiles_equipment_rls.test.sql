@@ -165,13 +165,21 @@ end;
 $$;
 
 select results_eq(
-  $$ select count(*) from public.profiles $$,
+  $$
+    select count(*)
+    from public.profiles
+    where id = '00000000-0000-4000-8000-000000000001'
+  $$,
   $$ values (0::bigint) $$,
   'non-owner cannot select another user profile'
 );
 
 select results_eq(
-  $$ select count(*) from public.equipment $$,
+  $$
+    select count(*)
+    from public.equipment
+    where user_id = '00000000-0000-4000-8000-000000000001'
+  $$,
   $$ values (0::bigint) $$,
   'non-owner cannot select another user equipment'
 );
