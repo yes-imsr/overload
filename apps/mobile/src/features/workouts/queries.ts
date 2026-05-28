@@ -272,6 +272,9 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
       }
 
       await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
+      await queryClient.invalidateQueries({
+        queryKey: ["calibration", "exercise-calibrations", userId],
+      });
       return data as {
         sessionId: string;
         totalVolume: number;

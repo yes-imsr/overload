@@ -10,8 +10,8 @@ import {
 } from "react-native";
 import { CalibrationBadge, FormField, PrimaryCTAButton, RPESelector } from "@/components";
 import { useAuthSession } from "@/features/onboarding/queries";
+import { useExerciseCalibration } from "@/features/calibration/queries";
 import { useCompleteWorkoutSession } from "@/features/workouts/queries";
-import { toCalibrationUiState } from "@overload/core-engine";
 import { ScreenShell } from "@/screens/ScreenShell";
 import {
   createClientSetKey,
@@ -30,8 +30,9 @@ export default function ActiveWorkoutScreen() {
   const editSet = useActiveWorkoutDraftStore((state) => state.editSet);
   const clearDraft = useActiveWorkoutDraftStore((state) => state.clearDraft);
   const completeWorkout = useCompleteWorkoutSession(userId);
+  const currentExercise = draft?.exercises[draft.currentExerciseIndex ?? 0];
+  const calibration = useExerciseCalibration(userId, currentExercise?.exerciseId);
 
-  const currentExercise = draft?.exercises[draft.currentExerciseIndex];
   const currentSet = currentExercise?.sets[currentExercise.sets.length - 1];
 
   const completedSetCount = useMemo(() => {
@@ -112,7 +113,9 @@ export default function ActiveWorkoutScreen() {
           ))}
         </View>
 
-        <CalibrationBadge state={toCalibrationUiState("uncalibrated")} />
+        <CalibrationBadge
+          status={calibration.data?.calibration_status ?? "uncalibrated"}
+        />
 
         <View style={styles.targetRow}>
           <Text style={styles.targetLabel}>TARGET</Text>
