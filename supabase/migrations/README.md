@@ -1,6 +1,6 @@
 # Supabase migrations — Overload MVP
 
-Migrations apply in timestamp order. OVERLOAD-001B delivers the MVP schema.
+Migrations apply in timestamp order.
 
 | Migration | Purpose | Linear |
 |-----------|---------|--------|
@@ -23,4 +23,4 @@ supabase db reset
 
 ## Smoke test
 
-See `supabase/tests/mvp_schema_smoke.sql`.
+See `supabase/tests/mvp_schema_smoke.sql` and `supabase/tests/rls_profiles_equipment.sql`.

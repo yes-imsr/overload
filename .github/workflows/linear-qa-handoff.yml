@@ -1,0 +1,183 @@
+name: Linear QA Handoff
+
+"on":
+  issue_comment:
+    types:
+      - created
+  pull_request_review:
+    types:
+      - submitted
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  qa-handoff:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine QA verdict
+        id: verdict
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let body = "";
+
+            if (context.eventName === "issue_comment") {
+              body = context.payload.comment.body || "";
+            }
+
+            if (context.eventName === "pull_request_review") {
+              body = context.payload.review.body || "";
+            }
+
+            const isPass = body.includes("Verdict: Pass");
+            const isFail = body.includes("Verdict: Fail");
+
+            core.setOutput("pass", isPass ? "true" : "false");
+            core.setOutput("fail", isFail ? "true" : "false");
+
+      - name: Stop if no verdict exists
+        if: steps.verdict.outputs.pass != 'true' && steps.verdict.outputs.fail != 'true'
+        run: echo "No Codex verdict found. Skipping."
+
+      - name: Get PR and Linear issue details
+        if: steps.verdict.outputs.pass == 'true' || steps.verdict.outputs.fail == 'true'
+        id: pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let prNumber = null;
+
+            if (context.payload.issue && context.payload.issue.pull_request) {
+              prNumber = context.payload.issue.number;
+            }
+
+            if (context.payload.pull_request) {
+              prNumber = context.payload.pull_request.number;
+            }
+
+            if (!prNumber) {
+              core.setFailed("No pull request found for this event.");
+              return;
+            }
+
+            const response = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: prNumber
+            });
+
+            const pr = response.data;
+            const combined = `${pr.title}\n${pr.body || ""}\n${pr.head.ref || ""}`;
+            const match = combined.match(/OVR-\d+/i);
+
+            if (!match) {
+              core.setFailed("No Linear issue ID like OVR-7 found in PR title, body, or branch.");
+              return;
+            }
+
+            core.setOutput("number", String(prNumber));
+            core.setOutput("linear_issue", match[0].toUpperCase());
+            core.setOutput("html_url", pr.html_url);
+
+      - name: Move Linear issue to QA Passed and assign Cursor
+        if: steps.verdict.outputs.pass == 'true'
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_CURSOR_USER_ID: ${{ secrets.LINEAR_CURSOR_USER_ID }}
+          LINEAR_QA_PASSED_STATE_ID: ${{ secrets.LINEAR_QA_PASSED_STATE_ID }}
+          LINEAR_ISSUE_ID: ${{ steps.pr.outputs.linear_issue }}
+        run: |
+          curl -sS https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n \
+              --arg issue "$LINEAR_ISSUE_ID" \
+              --arg state "$LINEAR_QA_PASSED_STATE_ID" \
+              --arg assignee "$LINEAR_CURSOR_USER_ID" \
+              '{
+                query: "mutation UpdateIssue($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success issue { id identifier title } } }",
+                variables: {
+                  id: $issue,
+                  input: {
+                    stateId: $state,
+                    assigneeId: $assignee
+                  }
+                }
+              }')"
+
+      - name: Comment Cursor merge request
+        if: steps.verdict.outputs.pass == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueId = "${{ steps.pr.outputs.linear_issue }}";
+            const prNumber = Number("${{ steps.pr.outputs.number }}");
+
+            const comment = [
+              `@cursor Codex returned **Verdict: Pass** for ${issueId}.`,
+              ``,
+              `Linear should now be **QA Passed** and reassigned to Cursor.`,
+              ``,
+              `Please merge this PR if branch protection and checks are satisfied, then move ${issueId} to **Done**.`
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });
+
+      - name: Move Linear issue to QA Failed and assign Cursor
+        if: steps.verdict.outputs.fail == 'true'
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_CURSOR_USER_ID: ${{ secrets.LINEAR_CURSOR_USER_ID }}
+          LINEAR_QA_FAILED_STATE_ID: ${{ secrets.LINEAR_QA_FAILED_STATE_ID }}
+          LINEAR_ISSUE_ID: ${{ steps.pr.outputs.linear_issue }}
+        run: |
+          curl -sS https://api.linear.app/graphql \
+            -H "Authorization: $LINEAR_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n \
+              --arg issue "$LINEAR_ISSUE_ID" \
+              --arg state "$LINEAR_QA_FAILED_STATE_ID" \
+              --arg assignee "$LINEAR_CURSOR_USER_ID" \
+              '{
+                query: "mutation UpdateIssue($id: String!, $input: IssueUpdateInput!) { issueUpdate(id: $id, input: $input) { success issue { id identifier title } } }",
+                variables: {
+                  id: $issue,
+                  input: {
+                    stateId: $state,
+                    assigneeId: $assignee
+                  }
+                }
+              }')"
+
+      - name: Comment Cursor fix request
+        if: steps.verdict.outputs.fail == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueId = "${{ steps.pr.outputs.linear_issue }}";
+            const prNumber = Number("${{ steps.pr.outputs.number }}");
+
+            const comment = [
+              `@cursor Codex returned **Verdict: Fail** for ${issueId}.`,
+              ``,
+              `Linear should now be **QA Failed** and reassigned to Cursor.`,
+              ``,
+              `Please fix only the QA findings, push to this same PR, and move the issue back to **Ready for QA** when done.`
+            ].join("\n");
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });
