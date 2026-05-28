@@ -1,4 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  applyCompletedCalibrationSession,
+  createInitialCalibrationContext,
+  estimateOneRepMax,
+  parseCalibrationContext,
+} from "../_shared/calibration.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -6,6 +12,7 @@ const corsHeaders = {
 };
 
 type WorkoutSetRow = {
+  exercise_id: string;
   weight: number;
   reps: number;
   set_type: string;
@@ -28,6 +35,59 @@ function calculatePowerAwarded(totalVolume: number, workingSetCount: number): nu
   }
   const basePower = Math.round((totalVolume / 62.5) * 100) / 100;
   return Math.max(1, basePower);
+}
+
+async function updateExerciseCalibrations(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+  sessionId: string,
+  completedAt: string,
+  sets: WorkoutSetRow[],
+) {
+  const grouped = new Map<string, WorkoutSetRow[]>();
+  for (const set of sets) {
+    if (!set.is_completed || set.set_type !== "working") {
+      continue;
+    }
+    const existing = grouped.get(set.exercise_id) ?? [];
+    existing.push(set);
+    grouped.set(set.exercise_id, existing);
+  }
+
+  for (const [exerciseId, exerciseSets] of grouped.entries()) {
+    const estimates = exerciseSets.map((set) => estimateOneRepMax(set.weight, set.reps));
+    const bestEstimatedOneRepMax = Math.max(...estimates);
+
+    const { data: existingRow } = await adminClient
+      .from("exercise_calibrations")
+      .select("calibration_status, calibrated_at, recent_performances")
+      .eq("user_id", userId)
+      .eq("exercise_id", exerciseId)
+      .maybeSingle();
+
+    const context = existingRow
+      ? parseCalibrationContext(existingRow)
+      : createInitialCalibrationContext();
+
+    const nextContext = applyCompletedCalibrationSession(context, {
+      sessionId,
+      completedAtIso: completedAt,
+      bestEstimatedOneRepMax,
+      completedWorkingSets: exerciseSets.length,
+    });
+
+    await adminClient.from("exercise_calibrations").upsert(
+      {
+        user_id: userId,
+        exercise_id: exerciseId,
+        calibration_status: nextContext.status,
+        calibrated_at: nextContext.calibratedAtIso,
+        last_session_at: completedAt,
+        recent_performances: nextContext.recentPerformances,
+      },
+      { onConflict: "user_id,exercise_id" },
+    );
+  }
 }
 
 Deno.serve(async (request) => {
@@ -107,7 +167,7 @@ Deno.serve(async (request) => {
 
     const { data: sets, error: setsError } = await userClient
       .from("workout_sets")
-      .select("weight, reps, set_type, is_completed")
+      .select("exercise_id, weight, reps, set_type, is_completed")
       .eq("session_id", sessionId)
       .eq("is_completed", true);
 
@@ -142,6 +202,8 @@ Deno.serve(async (request) => {
     if (updateError) {
       throw updateError;
     }
+
+    await updateExerciseCalibrations(adminClient, user.id, sessionId, completedAt, completedSets);
 
     await adminClient.from("game_events").insert({
       user_id: user.id,
