@@ -9,7 +9,8 @@ where schemaname = 'public'
   and tablename in (
     'profiles', 'equipment', 'exercises', 'workout_templates',
     'workout_template_exercises', 'workout_sessions', 'workout_sets',
-    'game_state', 'game_events',
+    'exercise_calibrations', 'game_state', 'game_events',
+    'nodes', 'user_nodes',
     'debuffs', 'prestige_attempts'
   )
 order by tablename;
@@ -22,7 +23,8 @@ where n.nspname = 'public'
   and c.relname in (
     'profiles', 'equipment', 'exercises', 'workout_templates',
     'workout_template_exercises', 'workout_sessions', 'workout_sets',
-    'game_state', 'game_events',
+    'exercise_calibrations', 'game_state', 'game_events',
+    'nodes', 'user_nodes',
     'debuffs', 'prestige_attempts'
   )
 order by c.relname;
@@ -32,7 +34,12 @@ select count(*) as builtin_count
 from public.exercises
 where is_builtin = true and user_id is null;
 
--- 4. Policy count (expect >= 1 per user-owned table)
+-- 4. Tiny MVP node seed
+select count(*) as active_node_count
+from public.nodes
+where is_active = true;
+
+-- 5. Policy count (expect >= 1 per user-owned table and active catalog)
 select schemaname, tablename, count(*) as policy_count
 from pg_policies
 where schemaname = 'public'

@@ -92,7 +92,11 @@ insert into public.profiles (
   'Owner',
   'new',
   'equipment_complete'
-);
+) on conflict (id) do update
+set
+  display_name = excluded.display_name,
+  training_experience = excluded.training_experience,
+  onboarding_status = excluded.onboarding_status;
 
 insert into public.equipment (
   user_id,

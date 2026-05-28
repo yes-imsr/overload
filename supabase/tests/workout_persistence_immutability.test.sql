@@ -82,15 +82,11 @@ insert into public.profiles (
   id,
   display_name,
   training_experience,
-  training_focus,
-  training_days_per_week,
   onboarding_status
 ) values (
   '00000000-0000-4000-8000-000000000010',
   'Workout Owner',
   'new',
-  'strength',
-  3,
   'equipment_complete'
 ) on conflict (id) do nothing;
 

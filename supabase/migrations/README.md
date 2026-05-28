@@ -10,8 +10,9 @@ Migrations apply in timestamp order. OVERLOAD-001B delivers the MVP schema.
 | `20260526120003_overload_mvp_rls.sql` | RLS enable + policies |
 | `20260526120004_overload_mvp_seed_exercises.sql` | Built-in exercise catalog |
 | `20260528120000_ovr17_workout_template_exercises.sql` | OVR-17: `workout_template_exercises` + RLS |
+| `20260528130000_ovr18_game_persistence_schema.sql` | OVR-18: `exercise_calibrations`, tiny `nodes` catalog, `user_nodes`, game RLS/recovery checks |
 
-Workout persistence (exercises, templates, sessions, sets, immutability triggers, RLS) ships in OVERLOAD-001B migrations `20260526120001`–`20260526120003`. OVR-17 adds normalized template exercise rows and pgTAP coverage in `supabase/tests/workout_persistence_immutability.test.sql`.
+Workout persistence (exercises, templates, sessions, sets, immutability triggers, RLS) ships in OVERLOAD-001B migrations `20260526120001`–`20260526120003`. OVR-17 adds normalized template exercise rows and pgTAP coverage in `supabase/tests/workout_persistence_immutability.test.sql`. OVR-18 adds MVP game persistence coverage in `supabase/tests/game_persistence_rls.test.sql`.
 
 ## Local apply
 
