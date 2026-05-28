@@ -1,92 +1,56 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { PlaceholderScreen } from "@/components/placeholder-screen";
+import { router } from "expo-router";
+import { StyleSheet, Text, View } from "react-native";
+import { PrimaryCTAButton } from "@/components";
+import { CommandCard } from "@/components/CommandCard";
 import { useActiveWorkoutDraftStore } from "@/state/active-workout-draft-store";
-import { colors, radius, spacing, typography } from "@/tokens";
+import { colors, spacing, typography } from "@/tokens";
 
 export default function WorkoutsRoute() {
   const draft = useActiveWorkoutDraftStore((state) => state.draft);
-  const setDraft = useActiveWorkoutDraftStore((state) => state.setDraft);
-  const clearDraft = useActiveWorkoutDraftStore((state) => state.clearDraft);
 
   return (
-    <PlaceholderScreen
-      eyebrow="Workout logging"
-      title="Workout bay"
-      body="Placeholder route for active workout logging. Local Zustand state is limited to an in-progress draft; completed sessions and game outcomes remain server-owned."
-      navigation={[
-        { label: "Home console", href: "/(app)/home" },
-        { label: "Credits console", href: "/(app)/economy", tone: "economy" },
-        { label: "Profile", href: "/(app)/profile" },
-        { label: "Welcome", href: "/welcome" },
-      ]}
-    >
-      <View style={styles.draftPanel}>
-        <Text style={styles.draftLabel}>Active draft boundary</Text>
-        <Text style={styles.draftValue}>
-          {draft ? draft.movementName || "Unnamed movement" : "No local draft"}
-        </Text>
-        <View style={styles.actions}>
-          <Pressable
-            accessibilityRole="button"
-            style={styles.actionButton}
-            onPress={() =>
-              setDraft({
-                movementName: "Draft movement",
-                loadText: "",
-                repsText: "",
-                notes: "Local draft only",
-              })
-            }
-          >
-            <Text style={styles.actionText}>Create draft</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            style={[styles.actionButton, styles.clearButton]}
-            onPress={clearDraft}
-          >
-            <Text style={styles.actionText}>Clear draft</Text>
-          </Pressable>
-        </View>
-      </View>
-    </PlaceholderScreen>
+    <View style={styles.container}>
+      <Text style={styles.eyebrow}>WORKOUT LOGGING</Text>
+      <Text style={styles.title}>Workout bay</Text>
+      <Text style={styles.body}>
+        Start a starter session, log sets locally, and complete through the server-owned
+        completion path.
+      </Text>
+
+      {draft ? (
+        <CommandCard
+          title={draft.templateName}
+          subtitle="Active draft in progress."
+          statusLabel="IN PROGRESS"
+          onPress={() => router.push("/active-workout")}
+        />
+      ) : null}
+
+      <PrimaryCTAButton
+        label={draft ? "Resume Active Workout" : "Open Today's Workout"}
+        onPress={() => router.push(draft ? "/active-workout" : "/todays-workout")}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  draftPanel: {
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.background.border,
-    borderRadius: radius.sm,
+  container: {
+    flex: 1,
     backgroundColor: colors.background.primary,
-    padding: spacing.md,
+    padding: spacing.lg,
+    gap: spacing.md,
   },
-  draftLabel: {
+  eyebrow: {
     ...typography.label,
-    color: colors.text.muted,
+    color: colors.text.secondary,
   },
-  draftValue: {
-    ...typography.bodyMedium,
+  title: {
+    ...typography.title,
     color: colors.text.primary,
   },
-  actions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  actionButton: {
-    borderWidth: 1,
-    borderColor: colors.accent.success,
-    borderRadius: radius.sm,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  clearButton: {
-    borderColor: colors.accent.danger,
-  },
-  actionText: {
-    ...typography.bodyMedium,
-    color: colors.text.primary,
+  body: {
+    ...typography.body,
+    color: colors.text.secondary,
   },
 });
