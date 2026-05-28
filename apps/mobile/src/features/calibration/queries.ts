@@ -1,9 +1,40 @@
 import { useQuery } from "@tanstack/react-query";
-import { supabase, isSupabaseConfigured } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
 import type { ExerciseCalibrationRow } from "./types";
 
 export const exerciseCalibrationsQueryKey = (userId: string) =>
   ["calibration", "exercise-calibrations", userId] as const;
+
+type CalibrationExerciseRelation = ExerciseCalibrationRow["exercise"];
+
+type RawExerciseCalibrationRow = Omit<ExerciseCalibrationRow, "exercise"> & {
+  exercise: CalibrationExerciseRelation | CalibrationExerciseRelation[] | null;
+};
+
+function resolveCalibrationExercise(
+  relation: RawExerciseCalibrationRow["exercise"],
+): CalibrationExerciseRelation | null {
+  if (Array.isArray(relation)) {
+    return relation[0] ?? null;
+  }
+
+  return relation;
+}
+
+function toExerciseCalibrationRow(
+  row: RawExerciseCalibrationRow,
+): ExerciseCalibrationRow | null {
+  const exercise = resolveCalibrationExercise(row.exercise);
+
+  if (!exercise) {
+    return null;
+  }
+
+  return {
+    ...row,
+    exercise,
+  };
+}
 
 export function useExerciseCalibrations(userId: string | undefined) {
   return useQuery({
@@ -26,7 +57,9 @@ export function useExerciseCalibrations(userId: string | undefined) {
         throw error;
       }
 
-      return (data ?? []) as ExerciseCalibrationRow[];
+      return ((data ?? []) as unknown as RawExerciseCalibrationRow[])
+        .map(toExerciseCalibrationRow)
+        .filter((row): row is ExerciseCalibrationRow => row !== null);
     },
   });
 }
@@ -56,7 +89,9 @@ export function useExerciseCalibration(
         throw error;
       }
 
-      return (data as ExerciseCalibrationRow | null) ?? null;
+      return data
+        ? toExerciseCalibrationRow(data as unknown as RawExerciseCalibrationRow)
+        : null;
     },
   });
 }

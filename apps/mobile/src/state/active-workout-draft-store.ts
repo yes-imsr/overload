@@ -48,7 +48,7 @@ function createEmptySet(setOrder: number): DraftSet {
   };
 }
 
-export const useActiveWorkoutDraftStore = create<ActiveWorkoutDraftStore>((set, get) => ({
+export const useActiveWorkoutDraftStore = create<ActiveWorkoutDraftStore>((set) => ({
   draft: null,
   startDraft: (draft) => set({ draft }),
   attachSessionId: (sessionId) =>

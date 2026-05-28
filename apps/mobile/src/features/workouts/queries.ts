@@ -16,6 +16,37 @@ export const starterTemplateQueryKey = (userId: string) =>
 export const workoutSessionsQueryKey = (userId: string) =>
   ["workouts", "sessions", userId] as const;
 
+type TemplateExerciseRelation = WorkoutTemplateExercise["exercise"];
+
+type RawWorkoutTemplateExercise = Omit<WorkoutTemplateExercise, "exercise"> & {
+  exercise: TemplateExerciseRelation | TemplateExerciseRelation[] | null;
+};
+
+function resolveTemplateExercise(
+  relation: RawWorkoutTemplateExercise["exercise"],
+): TemplateExerciseRelation | null {
+  if (Array.isArray(relation)) {
+    return relation[0] ?? null;
+  }
+
+  return relation;
+}
+
+function toWorkoutTemplateExercise(
+  row: RawWorkoutTemplateExercise,
+): WorkoutTemplateExercise | null {
+  const exercise = resolveTemplateExercise(row.exercise);
+
+  if (!exercise) {
+    return null;
+  }
+
+  return {
+    ...row,
+    exercise,
+  };
+}
+
 export function useBuiltinExercises() {
   return useQuery({
     queryKey: builtinExercisesQueryKey,
@@ -83,7 +114,9 @@ export function useStarterTemplate(userId: string | undefined) {
 
       return {
         template,
-        exercises: (rows ?? []) as WorkoutTemplateExercise[],
+        exercises: ((rows ?? []) as unknown as RawWorkoutTemplateExercise[])
+          .map(toWorkoutTemplateExercise)
+          .filter((row): row is WorkoutTemplateExercise => row !== null),
       };
     },
   });
