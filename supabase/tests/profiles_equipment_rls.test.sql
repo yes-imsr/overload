@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(11);
+select plan(12);
 
 insert into auth.users (
   id,
@@ -86,15 +86,11 @@ insert into public.profiles (
   id,
   display_name,
   training_experience,
-  training_focus,
-  training_days_per_week,
   onboarding_status
 ) values (
   '00000000-0000-4000-8000-000000000001',
   'Owner',
   'new',
-  'strength',
-  3,
   'equipment_complete'
 );
 
@@ -131,7 +127,7 @@ select results_eq(
 select lives_ok(
   $$
     update public.profiles
-    set training_focus = 'general'
+    set training_experience = 'intermediate'
     where id = '00000000-0000-4000-8000-000000000001'
   $$,
   'owner can update their own profile'
