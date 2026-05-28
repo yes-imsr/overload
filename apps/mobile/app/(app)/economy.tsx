@@ -7,10 +7,10 @@ export default function EconomyRoute() {
       title="Economy console"
       body="Placeholder route for future server-backed Credits and node surfaces. No Power, Credits, Entropy, debuff, or prestige formulas are implemented in this screen."
       navigation={[
-        { label: "Home console", href: "/home" },
-        { label: "Workout bay", href: "/workouts", tone: "success" },
-        { label: "Profile", href: "/profile" },
-        { label: "Onboarding", href: "/onboarding" },
+        { label: "Home console", href: "/(app)/home" },
+        { label: "Workout bay", href: "/(app)/workouts", tone: "success" },
+        { label: "Profile", href: "/(app)/profile" },
+        { label: "Welcome", href: "/welcome" },
       ]}
     />
   );
