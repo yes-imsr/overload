@@ -184,6 +184,7 @@ select throws_ok(
     )
   $$,
   '42501',
+  'new row violates row-level security policy for table "equipment"',
   'non-owner cannot insert equipment for another user'
 );
 
