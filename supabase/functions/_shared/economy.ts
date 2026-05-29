@@ -134,6 +134,13 @@ function userNodeMap(rows: UserNodeRow[]): Map<string, UserNodeRow> {
   return new Map(rows.map((row) => [row.node_id, row]));
 }
 
+function unlockBlockReason(evaluation: {
+  allowed: boolean;
+  reasonCode?: string;
+}): string | null {
+  return evaluation.allowed ? null : (evaluation.reasonCode ?? null);
+}
+
 export function buildEconomySnapshot(input: {
   gameState: GameStateRow;
   catalogNodes: CatalogNodeRow[];
@@ -188,7 +195,7 @@ export function buildEconomySnapshot(input: {
       isUnlocked,
       level: Number(owned?.level ?? 0),
       canUnlock: evaluation.allowed,
-      blockReason: "reasonCode" in evaluation ? evaluation.reasonCode : null,
+      blockReason: unlockBlockReason(evaluation),
     };
   });
 
