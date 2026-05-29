@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { calculatePowerFromWorkout } from "../_shared/core-engine.bundle.mjs";
+import { settleIdleCreditsAt } from "../_shared/economy.ts";
 import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
@@ -257,6 +258,12 @@ Deno.serve(async (request) => {
       },
     });
 
+    await settleIdleCreditsAt(adminClient, user.id, completedAt, {
+      clientMutationId,
+      reason: "workout_completion",
+      sessionId,
+    });
+
     const { data: existingState } = await adminClient
       .from("game_state")
       .select("power_balance")
@@ -274,6 +281,7 @@ Deno.serve(async (request) => {
       await adminClient.from("game_state").insert({
         user_id: user.id,
         power_balance: powerAwarded,
+        last_idle_claim_at: completedAt,
       });
     }
 

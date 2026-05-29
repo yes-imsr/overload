@@ -211,6 +211,77 @@ export function buildEconomySnapshot(input: {
   };
 }
 
+/** Settle idle Credits accrued on the current Power balance, then advance the claim clock. */
+export async function settleIdleCreditsAt(
+  adminClient: AdminClient,
+  userId: string,
+  settlementIso: string,
+  metadata: Record<string, unknown> = {},
+): Promise<{ creditsSettled: number }> {
+  await ensureCoreReactorUnlocked(adminClient, userId);
+
+  const [gameState, catalogNodes, userNodes] = await Promise.all([
+    fetchGameState(adminClient, userId),
+    fetchCatalogNodes(adminClient),
+    fetchUserNodes(adminClient, userId),
+  ]);
+
+  if (!gameState) {
+    return { creditsSettled: 0 };
+  }
+
+  const before = buildEconomySnapshot({
+    gameState,
+    catalogNodes,
+    userNodes,
+    nowIso: settlementIso,
+  });
+
+  if (before.pendingCredits > 0) {
+    const { error: updateError } = await adminClient
+      .from("game_state")
+      .update({
+        credits_balance: before.creditsBalance + before.pendingCredits,
+        last_idle_claim_at: settlementIso,
+        idle_rate: before.idleRate,
+      })
+      .eq("user_id", userId);
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    await adminClient.from("game_events").insert({
+      user_id: userId,
+      event_type: "credits_claimed",
+      source_type: "system",
+      source_id: null,
+      credits_delta: before.pendingCredits,
+      metadata: {
+        ...metadata,
+        elapsedHours: before.elapsedHours,
+        idleRate: before.idleRate,
+        powerBalance: before.powerBalance,
+        settledAt: settlementIso,
+      },
+    });
+  } else {
+    const { error: clockError } = await adminClient
+      .from("game_state")
+      .update({
+        last_idle_claim_at: settlementIso,
+        idle_rate: before.idleRate,
+      })
+      .eq("user_id", userId);
+
+    if (clockError) {
+      throw clockError;
+    }
+  }
+
+  return { creditsSettled: before.pendingCredits };
+}
+
 export async function loadEconomySnapshot(
   adminClient: AdminClient,
   userId: string,
