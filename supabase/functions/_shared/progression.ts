@@ -5,12 +5,12 @@
 import {
   effortFromRpeLabel,
   recommendProgressionForSession,
-} from "@overload/core-engine/progression/index.ts";
-import type { RpeLabel } from "@overload/core-engine/progression/hardestEffort.ts";
+} from "./core-engine.bundle.mjs";
+import type { RpeLabel } from "./core-engine.bundle.mjs";
 import type {
   ProgressionRecommendation,
   ProgressionTarget,
-} from "@overload/core-engine/progression/types.ts";
+} from "./core-engine.bundle.mjs";
 
 export type { ProgressionRecommendation, ProgressionTarget, RpeLabel };
 
