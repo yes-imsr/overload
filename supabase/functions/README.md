@@ -4,10 +4,13 @@ Edge Functions for server-validated workout completion, progression, prestige, d
 
 | Function | Purpose |
 |----------|---------|
-| `complete-workout-session` | Finalize sessions, award Power, apply progression |
+| `complete-workout-session` | Finalize sessions, award Power, apply progression, economy settlement, and Stability Task effects |
 | `economy-snapshot` | Read server-computed economy state (balances, pending Credits, nodes) |
 | `claim-idle-credits` | Claim accrued Credits from stored Power |
 | `upgrade-node` | Spend Credits to unlock MVP nodes |
+| `stability-snapshot` | Read server-computed Entropy and Stability Task state |
+| `reveal-debuff` | Reveal pending Stability Task when a workout is in progress |
+| `resolve-debuff` | Resolve the active Stability Task |
 
 Edge functions consume domain logic from `@overload/core-engine` via a bundled artifact:
 
