@@ -4,6 +4,7 @@ import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
 } from "../_shared/progression.ts";
+import type { AdminClient } from "../_shared/supabase-types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -54,11 +55,11 @@ function collectEffortsByExercise(sets: WorkoutSetRow[]): Map<string, RpeLabel[]
 }
 
 async function applyTemplateProgression(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: AdminClient,
   templateId: string,
   effortsByExercise: Map<string, RpeLabel[]>,
   completedSets: WorkoutSetRow[],
-): Promise<ProgressionRecommendation[]> {
+): Promise<readonly ProgressionRecommendation[]> {
   const { data: templateRows, error } = await adminClient
     .from("workout_template_exercises")
     .select("id, exercise_id, target_rep_min, target_rep_max, planned_weight")
@@ -232,7 +233,7 @@ Deno.serve(async (request) => {
       throw updateError;
     }
 
-    let progressionUpdates: ProgressionRecommendation[] = [];
+    let progressionUpdates: readonly ProgressionRecommendation[] = [];
     if (session.template_id) {
       const effortsByExercise = collectEffortsByExercise(completedSets);
       progressionUpdates = await applyTemplateProgression(
