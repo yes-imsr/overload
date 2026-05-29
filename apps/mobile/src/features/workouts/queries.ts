@@ -328,12 +328,13 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
       if (!supabase || !userId) {
         throw new Error("Supabase session required");
       }
+      const supabaseClient = supabase;
 
       if (input.sets.length === 0) {
         throw new Error("At least one set is required to complete a workout");
       }
 
-      const { error: setsError } = await supabase.from("workout_sets").insert(
+      const { error: setsError } = await supabaseClient.from("workout_sets").insert(
         input.sets.map((set) => ({
           session_id: input.sessionId,
           user_id: userId,
@@ -355,7 +356,7 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
         throw setsError;
       }
 
-      const { data, error } = await supabase.functions.invoke("complete-workout-session", {
+      const { data, error } = await supabaseClient.functions.invoke("complete-workout-session", {
         body: {
           sessionId: input.sessionId,
           clientMutationId: input.clientMutationId,
@@ -366,7 +367,7 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
         throw error;
       }
 
-      const { data: sessionRow, error: sessionError } = await supabase
+      const { data: sessionRow, error: sessionError } = await supabaseClient
         .from("workout_sessions")
         .select("template_id")
         .eq("id", input.sessionId)
@@ -379,7 +380,7 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
 
       const templateId = (sessionRow as { template_id: string | null }).template_id;
       if (templateId) {
-        const { data: templateRows, error: templateRowsError } = await supabase
+        const { data: templateRows, error: templateRowsError } = await supabaseClient
           .from("workout_template_exercises")
           .select(
             "id, exercise_id, target_rep_min, target_rep_max, planned_weight, last_progression_action, last_progression_reason_code, last_progression_source_session_id, last_progression_applied_at",
@@ -403,7 +404,7 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
               return;
             }
 
-            const { error: updateError } = await supabase
+            const { error: updateError } = await supabaseClient
               .from("workout_template_exercises")
               .update(buildProgressionUpdate(row, recommendation, input.sessionId))
               .eq("id", row.id);

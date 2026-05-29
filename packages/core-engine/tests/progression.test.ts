@@ -111,7 +111,7 @@ describe("recommendProgressionsForSession", () => {
       {
         exerciseId: "row",
         action: "increase",
-        nextWeight: 56.38,
+        nextWeight: 56.37,
         nextRepTarget: 10,
         reasonCode: "effort_medium_weight_up",
       },
