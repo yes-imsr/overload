@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { calculatePowerFromWorkout } from "../_shared/core-engine.bundle.mjs";
-import { claimCreditsForUser } from "../_shared/economy.ts";
+import { claimCreditsForUser, type SupabaseClient } from "../_shared/economy.ts";
 import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
@@ -55,11 +55,11 @@ function collectEffortsByExercise(sets: WorkoutSetRow[]): Map<string, RpeLabel[]
 }
 
 async function applyTemplateProgression(
-  adminClient: ReturnType<typeof createClient>,
+  adminClient: SupabaseClient,
   templateId: string,
   effortsByExercise: Map<string, RpeLabel[]>,
   completedSets: WorkoutSetRow[],
-): Promise<ProgressionRecommendation[]> {
+): Promise<readonly ProgressionRecommendation[]> {
   const { data: templateRows, error } = await adminClient
     .from("workout_template_exercises")
     .select("id, exercise_id, target_rep_min, target_rep_max, planned_weight")
@@ -233,7 +233,7 @@ Deno.serve(async (request) => {
       throw updateError;
     }
 
-    let progressionUpdates: ProgressionRecommendation[] = [];
+    let progressionUpdates: readonly ProgressionRecommendation[] = [];
     if (session.template_id) {
       const effortsByExercise = collectEffortsByExercise(completedSets);
       progressionUpdates = await applyTemplateProgression(

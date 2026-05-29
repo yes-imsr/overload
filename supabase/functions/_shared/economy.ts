@@ -1,10 +1,10 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import type { SupabaseClient as SupabaseClientType } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   calculateIdleCredits,
   calculateIdleRateFromNodes,
 } from "./core-engine.bundle.mjs";
 
-export type SupabaseClient = ReturnType<typeof createClient>;
+export type SupabaseClient = SupabaseClientType<any, "public", any>;
 
 export type GameStateRow = {
   user_id: string;
@@ -104,7 +104,7 @@ async function ensureStarterNodes(
     return;
   }
 
-  const freeNodeIds = freeNodes.map((node: { id: string }) => node.id);
+  const freeNodeIds = freeNodes.map((node) => String(node.id));
   const { data: existingRows, error: existingError } = await adminClient
     .from("user_nodes")
     .select("node_id")
@@ -116,7 +116,7 @@ async function ensureStarterNodes(
   }
 
   const existingNodeIds = new Set(
-    (existingRows ?? []).map((row: { node_id: string }) => row.node_id),
+    (existingRows ?? []).map((row) => String(row.node_id)),
   );
   const missingFreeNodes = freeNodeIds.filter((nodeId) => !existingNodeIds.has(nodeId));
 
