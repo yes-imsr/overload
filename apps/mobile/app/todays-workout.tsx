@@ -4,6 +4,10 @@ import { PrimaryCTAButton } from "@/components";
 import { CommandCard } from "@/components/CommandCard";
 import { useAuthSession, useEquipment, useProfile } from "@/features/onboarding/queries";
 import {
+  formatProgressionReason,
+  formatTargetSummary,
+} from "@/features/workouts/progression-labels";
+import {
   useEnsureStarterTemplate,
   useStartWorkoutSession,
   useStarterTemplate,
@@ -58,6 +62,7 @@ export default function TodaysWorkoutScreen() {
         targetSets: row.target_sets,
         targetRepMin: row.target_rep_min,
         targetRepMax: row.target_rep_max,
+        plannedWeight: row.planned_weight,
       })),
     });
 
@@ -77,7 +82,7 @@ export default function TodaysWorkoutScreen() {
   return (
     <ScreenShell
       title="Today's Workout"
-      subtitle="Starter session built from your profile and equipment."
+      subtitle="Targets update after each completed session based on logged effort."
     >
       {isLoading ? (
         <ActivityIndicator color={colors.text.primary} />
@@ -94,15 +99,31 @@ export default function TodaysWorkoutScreen() {
 
           {starterTemplate.data ? (
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>STARTER WORKOUT</Text>
-              {starterTemplate.data.exercises.map((row) => (
-                <View key={row.id} style={styles.exerciseRow}>
-                  <Text style={styles.exerciseName}>{row.exercise.name}</Text>
-                  <Text style={styles.exerciseMeta}>
-                    {row.target_sets} sets · {row.target_rep_min}-{row.target_rep_max} reps
-                  </Text>
-                </View>
-              ))}
+              <Text style={styles.sectionLabel}>NEXT SESSION TARGETS</Text>
+              {starterTemplate.data.exercises.map((row) => {
+                const targetSummary = formatTargetSummary(
+                  row.planned_weight,
+                  row.target_rep_min,
+                  row.target_rep_max,
+                );
+                const progressionReason = formatProgressionReason(row.progression_reason_code);
+
+                return (
+                  <View key={row.id} style={styles.exerciseRow}>
+                    <Text style={styles.exerciseName}>{row.exercise.name}</Text>
+                    <Text style={styles.exerciseMeta}>
+                      {row.target_sets} sets · {targetSummary}
+                    </Text>
+                    {progressionReason ? (
+                      <Text style={styles.progressionReason}>{progressionReason}</Text>
+                    ) : (
+                      <Text style={styles.progressionPending}>
+                        Baseline targets from your starter template.
+                      </Text>
+                    )}
+                  </View>
+                );
+              })}
             </View>
           ) : (
             <Text style={styles.helper}>
@@ -148,6 +169,14 @@ const styles = StyleSheet.create({
   exerciseMeta: {
     ...typography.caption,
     color: colors.text.secondary,
+  },
+  progressionReason: {
+    ...typography.caption,
+    color: colors.accent.success,
+  },
+  progressionPending: {
+    ...typography.caption,
+    color: colors.text.muted,
   },
   helper: {
     ...typography.body,

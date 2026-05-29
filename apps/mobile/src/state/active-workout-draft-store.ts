@@ -15,6 +15,7 @@ export type DraftExercise = {
   targetSets: number;
   targetRepMin: number;
   targetRepMax: number;
+  plannedWeight: number | null;
   sets: DraftSet[];
 };
 
@@ -182,6 +183,7 @@ export function buildDraftFromTemplate(input: {
     targetSets: number;
     targetRepMin: number;
     targetRepMax: number;
+    plannedWeight: number | null;
   }>;
 }): ActiveWorkoutDraft {
   return {
@@ -198,7 +200,18 @@ export function buildDraftFromTemplate(input: {
       targetSets: exercise.targetSets,
       targetRepMin: exercise.targetRepMin,
       targetRepMax: exercise.targetRepMax,
-      sets: [createEmptySet(1)],
+      plannedWeight: exercise.plannedWeight,
+      sets: [
+        {
+          setOrder: 1,
+          weight:
+            exercise.plannedWeight !== null && exercise.plannedWeight > 0
+              ? String(exercise.plannedWeight)
+              : "",
+          reps: "",
+          effort: null,
+        },
+      ],
     })),
   };
 }

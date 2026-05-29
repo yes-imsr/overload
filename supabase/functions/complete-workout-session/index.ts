@@ -1,18 +1,34 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { calculatePowerFromWorkout } from "@overload/core-engine/economy/calculatePowerFromWorkout.ts";
+import {
+  recommendProgressionForSessionFromRpe,
+  type ProgressionRecommendation,
+} from "../_shared/progression.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+type RpeLabel = "easy" | "medium" | "hard" | "near_death";
+
 type WorkoutSetRow = {
+  exercise_id: string;
   weight: number;
   reps: number;
   set_type: string;
   is_completed: boolean;
+  rpe_label: RpeLabel | null;
 };
 
-// Mirrors @overload/core-engine calculatePowerFromWorkout for server-side completion.
+type TemplateExerciseRow = {
+  id: string;
+  exercise_id: string;
+  target_rep_min: number | null;
+  target_rep_max: number | null;
+  planned_weight: number | null;
+};
+
 function calculateTotalVolume(sets: WorkoutSetRow[]): number {
   return sets.reduce((total, set) => {
     if (!set.is_completed || set.set_type !== "working") {
@@ -22,12 +38,82 @@ function calculateTotalVolume(sets: WorkoutSetRow[]): number {
   }, 0);
 }
 
-function calculatePowerAwarded(totalVolume: number, workingSetCount: number): number {
-  if (workingSetCount === 0) {
-    return 0;
+function collectEffortsByExercise(sets: WorkoutSetRow[]): Map<string, RpeLabel[]> {
+  const effortsByExercise = new Map<string, RpeLabel[]>();
+
+  for (const set of sets) {
+    if (!set.is_completed || set.set_type !== "working" || !set.rpe_label) {
+      continue;
+    }
+    const existing = effortsByExercise.get(set.exercise_id) ?? [];
+    existing.push(set.rpe_label);
+    effortsByExercise.set(set.exercise_id, existing);
   }
-  const basePower = Math.round((totalVolume / 62.5) * 100) / 100;
-  return Math.max(1, basePower);
+
+  return effortsByExercise;
+}
+
+async function applyTemplateProgression(
+  adminClient: ReturnType<typeof createClient>,
+  templateId: string,
+  effortsByExercise: Map<string, RpeLabel[]>,
+  completedSets: WorkoutSetRow[],
+): Promise<ProgressionRecommendation[]> {
+  const { data: templateRows, error } = await adminClient
+    .from("workout_template_exercises")
+    .select("id, exercise_id, target_rep_min, target_rep_max, planned_weight")
+    .eq("template_id", templateId);
+
+  if (error || !templateRows?.length) {
+    return [];
+  }
+
+  const lastWeightByExercise = new Map<string, number>();
+  for (const set of completedSets) {
+    if (!set.is_completed || set.set_type !== "working") {
+      continue;
+    }
+    const current = lastWeightByExercise.get(set.exercise_id) ?? 0;
+    if (set.weight >= current) {
+      lastWeightByExercise.set(set.exercise_id, set.weight);
+    }
+  }
+
+  const targets = (templateRows as TemplateExerciseRow[]).map((row) => ({
+    exerciseId: row.exercise_id,
+    currentWeight: Number(
+      lastWeightByExercise.get(row.exercise_id) ?? row.planned_weight ?? 0,
+    ),
+    currentRepTarget: Number(row.target_rep_max ?? row.target_rep_min ?? 8),
+  }));
+
+  const recommendations = recommendProgressionForSessionFromRpe(targets, effortsByExercise);
+
+  for (const recommendation of recommendations) {
+    const row = (templateRows as TemplateExerciseRow[]).find(
+      (entry) => entry.exercise_id === recommendation.exerciseId,
+    );
+    if (!row) {
+      continue;
+    }
+
+    const nextWeight =
+      recommendation.nextWeight > 0 ? recommendation.nextWeight : row.planned_weight;
+    const repMin = recommendation.nextRepTarget;
+    const repMax = Math.max(repMin, Number(row.target_rep_max ?? repMin));
+
+    await adminClient
+      .from("workout_template_exercises")
+      .update({
+        planned_weight: nextWeight,
+        target_rep_min: repMin,
+        target_rep_max: repMax,
+        progression_reason_code: recommendation.reasonCode,
+      })
+      .eq("id", row.id);
+  }
+
+  return recommendations;
 }
 
 Deno.serve(async (request) => {
@@ -75,7 +161,7 @@ Deno.serve(async (request) => {
 
     const { data: session, error: sessionError } = await userClient
       .from("workout_sessions")
-      .select("id, user_id, status, completed_at, total_volume, power_awarded")
+      .select("id, user_id, template_id, status, completed_at, total_volume, power_awarded")
       .eq("id", sessionId)
       .single();
 
@@ -107,7 +193,7 @@ Deno.serve(async (request) => {
 
     const { data: sets, error: setsError } = await userClient
       .from("workout_sets")
-      .select("weight, reps, set_type, is_completed")
+      .select("exercise_id, weight, reps, set_type, is_completed, rpe_label")
       .eq("session_id", sessionId)
       .eq("is_completed", true);
 
@@ -125,7 +211,10 @@ Deno.serve(async (request) => {
 
     const totalVolume = calculateTotalVolume(completedSets);
     const workingSetCount = completedSets.filter((set) => set.set_type === "working").length;
-    const powerAwarded = calculatePowerAwarded(totalVolume, workingSetCount);
+    const { powerAwarded } = calculatePowerFromWorkout({
+      totalVolume,
+      totalWorkingSets: workingSetCount,
+    });
     const completedAt = new Date().toISOString();
 
     const { error: updateError } = await adminClient
@@ -143,6 +232,17 @@ Deno.serve(async (request) => {
       throw updateError;
     }
 
+    let progressionUpdates: ProgressionRecommendation[] = [];
+    if (session.template_id) {
+      const effortsByExercise = collectEffortsByExercise(completedSets);
+      progressionUpdates = await applyTemplateProgression(
+        adminClient,
+        session.template_id,
+        effortsByExercise,
+        completedSets,
+      );
+    }
+
     await adminClient.from("game_events").insert({
       user_id: user.id,
       event_type: "workout_completed",
@@ -152,6 +252,7 @@ Deno.serve(async (request) => {
       metadata: {
         clientMutationId,
         totalVolume,
+        progressionUpdates,
       },
     });
 
@@ -180,6 +281,7 @@ Deno.serve(async (request) => {
         sessionId,
         totalVolume,
         powerAwarded,
+        progressionUpdates,
         status: "completed",
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

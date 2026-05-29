@@ -4,6 +4,6 @@ Edge Functions for server-validated workout completion, progression, prestige, d
 
 | Function | Purpose |
 |----------|---------|
-| `complete-workout-session` | Finalize in-progress sessions, calculate volume/Power server-side, append game events |
+| `complete-workout-session` | Finalize in-progress sessions, calculate volume/Power server-side, apply progression from `@overload/core-engine`, append game events |
 
-No functions are implemented in the repo foundation.
+Edge functions import domain logic via `supabase/functions/import_map.json` → `packages/core-engine`. Shared adapters under `_shared/` only map DB shapes to core-engine inputs.

@@ -72,7 +72,7 @@ export function useStarterTemplate(userId: string | undefined) {
       const { data: rows, error: rowsError } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, template_id, exercise_id, sort_order, target_sets, target_rep_min, target_rep_max, planned_weight, equipment_id, exercise:exercises(id, name, equipment_type, calibration_status)",
+          "id, template_id, exercise_id, sort_order, target_sets, target_rep_min, target_rep_max, planned_weight, equipment_id, progression_reason_code, exercise:exercises(id, name, equipment_type, calibration_status)",
         )
         .eq("template_id", template.id)
         .order("sort_order");
@@ -283,6 +283,7 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
       }
 
       await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: starterTemplateQueryKey(userId) });
       return data as {
         sessionId: string;
         totalVolume: number;
