@@ -1,9 +1,9 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import {
   calculateAggregateIdleRate,
   calculateIdleCredits,
   evaluateNodeUnlock,
 } from "./core-engine.bundle.mjs";
+import type { AdminClient } from "./supabase-types.ts";
 
 export const CORE_REACTOR_NODE_ID = "b0000001-0000-4000-8000-000000000001";
 
@@ -59,8 +59,6 @@ export type EconomySnapshot = {
   creditsPerHourAtCurrentPower: number;
   nodes: EconomyNodeSnapshot[];
 };
-
-type AdminClient = ReturnType<typeof createClient>;
 
 export async function fetchCatalogNodes(adminClient: AdminClient): Promise<CatalogNodeRow[]> {
   const { data, error } = await adminClient
