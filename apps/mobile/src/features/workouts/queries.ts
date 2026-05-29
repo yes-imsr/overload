@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { economySnapshotQueryKey } from "@/features/economy/queries";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Equipment, Profile } from "@/types/database";
 import { buildStarterTemplatePlan } from "./starter-template";
@@ -284,6 +285,7 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
 
       await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
       await queryClient.invalidateQueries({ queryKey: starterTemplateQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: economySnapshotQueryKey(userId) });
       return data as {
         sessionId: string;
         totalVolume: number;
