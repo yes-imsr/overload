@@ -1,6 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { calculatePowerFromWorkout } from "../_shared/core-engine.bundle.mjs";
-import { loadEconomySnapshot } from "../_shared/economy.ts";
+import { claimCreditsForUser } from "../_shared/economy.ts";
 import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
@@ -257,15 +257,17 @@ Deno.serve(async (request) => {
       },
     });
 
-    const economySnapshot = await loadEconomySnapshot(adminClient, user.id, completedAt);
+    const settledEconomy = await claimCreditsForUser(
+      adminClient,
+      user.id,
+      completedAt,
+      clientMutationId,
+    );
     const gameStateUpdate: Record<string, number | string> = {
-      power_balance: Number(economySnapshot.state.power_balance ?? 0) + powerAwarded,
-      idle_rate: economySnapshot.idleRate,
+      power_balance: Number(settledEconomy.state.power_balance ?? 0) + powerAwarded,
+      idle_rate: settledEconomy.idleRate,
+      last_idle_claim_at: completedAt,
     };
-
-    if (!economySnapshot.state.last_idle_claim_at) {
-      gameStateUpdate.last_idle_claim_at = completedAt;
-    }
 
     const { error: gameStateError } = await adminClient
       .from("game_state")

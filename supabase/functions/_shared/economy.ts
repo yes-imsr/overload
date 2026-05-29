@@ -243,9 +243,7 @@ export async function claimCreditsForUser(
   const powerBalance = asNumber(snapshot.state.power_balance);
   const lastClaimAtIso =
     snapshot.state.last_idle_claim_at ??
-    (powerBalance > 0
-      ? snapshot.state.updated_at ?? snapshot.state.created_at ?? nowIso
-      : nowIso);
+    (powerBalance > 0 ? snapshot.state.created_at ?? nowIso : nowIso);
   const { elapsedHours, creditsGenerated } = calculateIdleCredits({
     powerBalance,
     idleRate: snapshot.idleRate,
