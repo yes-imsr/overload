@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { calculatePowerFromWorkout } from "@overload/core-engine/economy/calculatePowerFromWorkout.ts";
 import {
-  recommendProgressionForSession,
+  recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
 } from "../_shared/progression.ts";
 
@@ -28,7 +29,6 @@ type TemplateExerciseRow = {
   planned_weight: number | null;
 };
 
-// Mirrors @overload/core-engine calculatePowerFromWorkout for server-side completion.
 function calculateTotalVolume(sets: WorkoutSetRow[]): number {
   return sets.reduce((total, set) => {
     if (!set.is_completed || set.set_type !== "working") {
@@ -36,14 +36,6 @@ function calculateTotalVolume(sets: WorkoutSetRow[]): number {
     }
     return total + set.weight * set.reps;
   }, 0);
-}
-
-function calculatePowerAwarded(totalVolume: number, workingSetCount: number): number {
-  if (workingSetCount === 0) {
-    return 0;
-  }
-  const basePower = Math.round((totalVolume / 62.5) * 100) / 100;
-  return Math.max(1, basePower);
 }
 
 function collectEffortsByExercise(sets: WorkoutSetRow[]): Map<string, RpeLabel[]> {
@@ -95,7 +87,7 @@ async function applyTemplateProgression(
     currentRepTarget: Number(row.target_rep_max ?? row.target_rep_min ?? 8),
   }));
 
-  const recommendations = recommendProgressionForSession(targets, effortsByExercise);
+  const recommendations = recommendProgressionForSessionFromRpe(targets, effortsByExercise);
 
   for (const recommendation of recommendations) {
     const row = (templateRows as TemplateExerciseRow[]).find(
@@ -219,7 +211,10 @@ Deno.serve(async (request) => {
 
     const totalVolume = calculateTotalVolume(completedSets);
     const workingSetCount = completedSets.filter((set) => set.set_type === "working").length;
-    const powerAwarded = calculatePowerAwarded(totalVolume, workingSetCount);
+    const { powerAwarded } = calculatePowerFromWorkout({
+      totalVolume,
+      totalWorkingSets: workingSetCount,
+    });
     const completedAt = new Date().toISOString();
 
     const { error: updateError } = await adminClient
