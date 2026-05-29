@@ -188,7 +188,7 @@ export function buildEconomySnapshot(input: {
       isUnlocked,
       level: Number(owned?.level ?? 0),
       canUnlock: evaluation.allowed,
-      blockReason: !evaluation.allowed ? evaluation.reasonCode : null,
+      blockReason: "reasonCode" in evaluation ? evaluation.reasonCode : null,
     };
   });
 
