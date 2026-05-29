@@ -3,6 +3,11 @@
  */
 export { calculatePowerFromWorkout } from "./economy/calculatePowerFromWorkout";
 export {
+  calculateAggregateIdleRate,
+  calculateIdleCredits,
+  evaluateNodeUnlock,
+} from "./economy/index";
+export {
   effortFromRpeLabel,
   recommendProgressionForSession,
 } from "./progression/index";

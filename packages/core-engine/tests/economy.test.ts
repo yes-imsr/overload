@@ -70,6 +70,42 @@ describe("calculateIdleCredits", () => {
     expect(result.creditsGenerated).toBe(420);
   });
 
+  it("new Power must not accrue Credits for time before it was awarded", () => {
+    const existingPower = 100;
+    const newPower = 50;
+    const lastClaimAt = "2026-05-28T10:00:00.000Z";
+    const workoutCompletedAt = "2026-05-28T14:00:00.000Z";
+    const idleRate = 1;
+
+    const settledBeforeAward = calculateIdleCredits({
+      powerBalance: existingPower,
+      idleRate,
+      lastClaimAtIso: lastClaimAt,
+      nowIso: workoutCompletedAt,
+    });
+
+    const incorrectRetroactive = calculateIdleCredits({
+      powerBalance: existingPower + newPower,
+      idleRate,
+      lastClaimAtIso: lastClaimAt,
+      nowIso: workoutCompletedAt,
+    });
+
+    const correctAfterSettlement = calculateIdleCredits({
+      powerBalance: existingPower + newPower,
+      idleRate,
+      lastClaimAtIso: workoutCompletedAt,
+      nowIso: workoutCompletedAt,
+    });
+
+    expect(settledBeforeAward.creditsGenerated).toBe(400);
+    expect(incorrectRetroactive.creditsGenerated).toBe(600);
+    expect(correctAfterSettlement.creditsGenerated).toBe(0);
+    expect(incorrectRetroactive.creditsGenerated).toBeGreaterThan(
+      settledBeforeAward.creditsGenerated,
+    );
+  });
+
   it("rejects timestamps that move backwards", () => {
     expect(() =>
       calculateIdleCredits({

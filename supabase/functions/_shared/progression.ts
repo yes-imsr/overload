@@ -6,11 +6,11 @@ import {
   effortFromRpeLabel,
   recommendProgressionForSession,
 } from "./core-engine.bundle.mjs";
-import type { RpeLabel } from "./core-engine.bundle.mjs";
 import type {
   ProgressionRecommendation,
   ProgressionTarget,
-} from "./core-engine.bundle.mjs";
+  RpeLabel,
+} from "./progression-types.ts";
 
 export type { ProgressionRecommendation, ProgressionTarget, RpeLabel };
 

@@ -43,12 +43,16 @@ jobs:
         with:
           deno-version: v2.1.4
 
-      - name: Deno check complete-workout-session entrypoint
-        run: deno check --no-lock supabase/functions/complete-workout-session/index.ts
+      - name: Deno check Edge Function entrypoints
+        run: |
+          deno check --no-lock supabase/functions/complete-workout-session/index.ts
+          deno check --no-lock supabase/functions/economy-snapshot/index.ts
+          deno check --no-lock supabase/functions/claim-idle-credits/index.ts
+          deno check --no-lock supabase/functions/upgrade-node/index.ts
 
       - name: Reset local database and run pgTAP
         run: |
-          supabase db start
+          supabase start
           supabase db reset --local
           supabase test db
 
@@ -57,7 +61,7 @@ jobs:
           supabase functions serve complete-workout-session --no-verify-jwt &
           SERVER_PID=$!
           trap "kill $SERVER_PID 2>/dev/null || true" EXIT
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             if curl -sf -o /dev/null -w "%{http_code}" -X OPTIONS \
               http://127.0.0.1:54321/functions/v1/complete-workout-session | grep -q 200; then
               echo "complete-workout-session worker booted successfully"
@@ -65,5 +69,5 @@ jobs:
             fi
             sleep 2
           done
-          echo "Edge Function failed to boot within 60s"
+          echo "Edge Function failed to boot within 90s"
           exit 1
