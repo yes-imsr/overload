@@ -4,7 +4,9 @@ Edge Functions for server-validated workout completion, progression, prestige, d
 
 | Function | Purpose |
 |----------|---------|
-| `complete-workout-session` | Finalize in-progress sessions, calculate volume/Power server-side, apply progression from `@overload/core-engine`, append game events |
+| `complete-workout-session` | Finalize in-progress sessions, calculate volume/Power server-side, apply progression and Entropy from `@overload/core-engine`, assign one Stability Task when needed, append game events |
+| `reveal-stability-task` | Reveal the one MVP Stability Task and mark it active through trusted persistence |
+| `resolve-stability-task` | Resolve the active Stability Task through the safe Recovery Challenge action |
 
 Edge functions consume domain logic from `@overload/core-engine` via a bundled artifact:
 

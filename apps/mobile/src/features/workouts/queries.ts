@@ -1,4 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  activeStabilityTaskQueryKey,
+  gameStateQueryKey,
+} from "@/features/game/queries";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Equipment, Profile } from "@/types/database";
 import { buildStarterTemplatePlan } from "./starter-template";
@@ -282,12 +286,19 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
         throw error;
       }
 
-      await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
-      await queryClient.invalidateQueries({ queryKey: starterTemplateQueryKey(userId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) }),
+        queryClient.invalidateQueries({ queryKey: starterTemplateQueryKey(userId) }),
+        queryClient.invalidateQueries({ queryKey: gameStateQueryKey(userId) }),
+        queryClient.invalidateQueries({ queryKey: activeStabilityTaskQueryKey(userId) }),
+      ]);
       return data as {
         sessionId: string;
         totalVolume: number;
         powerAwarded: number;
+        entropy: number;
+        entropyDelta: number;
+        stabilityTaskAssigned: boolean;
         status: "completed";
       };
     },

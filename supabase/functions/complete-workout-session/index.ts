@@ -1,5 +1,11 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { calculatePowerFromWorkout } from "../_shared/core-engine.bundle.mjs";
+import {
+  applyPowerGainModifier,
+  calculateEntropyAfterWorkout,
+  calculateEntropyFromMissedWork,
+  calculatePowerFromWorkout,
+  evaluateStabilityTaskAssignment,
+} from "../_shared/core-engine.bundle.mjs";
 import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
@@ -29,6 +35,21 @@ type TemplateExerciseRow = {
   planned_weight: number | null;
 };
 
+type GameStateRow = {
+  power_balance: number | null;
+  entropy: number | null;
+  current_debuff_id: string | null;
+  status: "active" | "prestige_locked" | "debuffed";
+};
+
+type StabilityTaskRow = {
+  id: string;
+  status: "pending_reveal" | "active" | "resolved" | "expired";
+  effect_value: number | null;
+};
+
+const millisecondsPerDay = 86_400_000;
+
 function calculateTotalVolume(sets: WorkoutSetRow[]): number {
   return sets.reduce((total, set) => {
     if (!set.is_completed || set.set_type !== "working") {
@@ -51,6 +72,77 @@ function collectEffortsByExercise(sets: WorkoutSetRow[]): Map<string, RpeLabel[]
   }
 
   return effortsByExercise;
+}
+
+function daysBetween(startIso: string | null | undefined, endIso: string): number {
+  if (!startIso) {
+    return 0;
+  }
+
+  const startTime = new Date(startIso).getTime();
+  const endTime = new Date(endIso).getTime();
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    return 0;
+  }
+
+  return Math.floor((endTime - startTime) / millisecondsPerDay);
+}
+
+function collectWorkingExerciseIds(sets: WorkoutSetRow[]): string[] {
+  return [
+    ...new Set(
+      sets
+        .filter((set) => set.is_completed && set.set_type === "working")
+        .map((set) => set.exercise_id),
+    ),
+  ];
+}
+
+async function countStaleExerciseSignals(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+  exerciseIds: string[],
+): Promise<number> {
+  if (exerciseIds.length === 0) {
+    return 0;
+  }
+
+  const { data, error } = await adminClient
+    .from("exercise_calibrations")
+    .select("exercise_id, calibration_status")
+    .eq("user_id", userId)
+    .in("exercise_id", exerciseIds);
+
+  if (error) {
+    throw error;
+  }
+
+  return new Set(
+    (data ?? [])
+      .filter((row) => row.calibration_status === "stale")
+      .map((row) => row.exercise_id),
+  ).size;
+}
+
+async function fetchOpenStabilityTask(
+  adminClient: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<StabilityTaskRow | null> {
+  const { data, error } = await adminClient
+    .from("debuffs")
+    .select("id, status, effect_value")
+    .eq("user_id", userId)
+    .eq("debuff_type", "power_gain_reduction")
+    .in("status", ["pending_reveal", "active"])
+    .order("assigned_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as StabilityTaskRow | null) ?? null;
 }
 
 async function applyTemplateProgression(
@@ -209,13 +301,66 @@ Deno.serve(async (request) => {
       });
     }
 
+    const { data: previousSession, error: previousSessionError } = await adminClient
+      .from("workout_sessions")
+      .select("completed_at")
+      .eq("user_id", user.id)
+      .eq("status", "completed")
+      .neq("id", sessionId)
+      .order("completed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (previousSessionError) {
+      throw previousSessionError;
+    }
+
+    const { data: existingState, error: stateError } = await adminClient
+      .from("game_state")
+      .select("power_balance, entropy, current_debuff_id, status")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (stateError) {
+      throw stateError;
+    }
+
+    const openStabilityTask = await fetchOpenStabilityTask(adminClient, user.id);
     const totalVolume = calculateTotalVolume(completedSets);
     const workingSetCount = completedSets.filter((set) => set.set_type === "working").length;
-    const { powerAwarded } = calculatePowerFromWorkout({
+    const { powerAwarded: basePowerAwarded } = calculatePowerFromWorkout({
       totalVolume,
       totalWorkingSets: workingSetCount,
     });
+    const powerModifier = applyPowerGainModifier({
+      basePower: basePowerAwarded,
+      debuffEffectValue: Number(openStabilityTask?.effect_value ?? 0.15),
+      hasActivePowerGainDebuff: openStabilityTask?.status === "active",
+    });
+    const powerAwarded = powerModifier.powerAwarded;
     const completedAt = new Date().toISOString();
+    const daysSinceLastWorkout = daysBetween(previousSession?.completed_at, completedAt);
+    const currentEntropy = Number((existingState as GameStateRow | null)?.entropy ?? 0);
+    const missedWorkEntropy = calculateEntropyFromMissedWork(currentEntropy, {
+      daysSinceLastWorkout,
+    });
+    const staleExerciseCount = await countStaleExerciseSignals(
+      adminClient,
+      user.id,
+      collectWorkingExerciseIds(completedSets),
+    );
+    const workoutEntropy = calculateEntropyAfterWorkout(missedWorkEntropy.nextEntropy, {
+      hasNearDeathEffort: completedSets.some(
+        (set) =>
+          set.is_completed &&
+          set.set_type === "working" &&
+          set.rpe_label === "near_death",
+      ),
+      staleExerciseCount,
+    });
+    const entropyDelta = missedWorkEntropy.delta + workoutEntropy.delta;
+    const nextEntropy = workoutEntropy.nextEntropy;
+    const entropyReasons = [...missedWorkEntropy.reasons, ...workoutEntropy.reasons];
 
     const { error: updateError } = await adminClient
       .from("workout_sessions")
@@ -243,37 +388,123 @@ Deno.serve(async (request) => {
       );
     }
 
-    await adminClient.from("game_events").insert({
+    const { error: workoutEventError } = await adminClient.from("game_events").insert({
       user_id: user.id,
       event_type: "workout_completed",
       source_type: "workout_session",
       source_id: sessionId,
       power_delta: powerAwarded,
+      entropy_delta: entropyDelta,
       metadata: {
         clientMutationId,
         totalVolume,
+        basePowerAwarded,
+        powerModifierApplied: powerModifier.modifierApplied,
+        entropyReasons,
+        daysSinceLastWorkout,
+        staleExerciseCount,
         progressionUpdates,
       },
     });
 
-    const { data: existingState } = await adminClient
-      .from("game_state")
-      .select("power_balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    if (workoutEventError) {
+      throw workoutEventError;
+    }
+
+    const nextPowerBalance =
+      Number((existingState as GameStateRow | null)?.power_balance ?? 0) + powerAwarded;
 
     if (existingState) {
-      await adminClient
+      const { error: updateStateError } = await adminClient
         .from("game_state")
         .update({
-          power_balance: Number(existingState.power_balance ?? 0) + powerAwarded,
+          power_balance: nextPowerBalance,
+          entropy: nextEntropy,
+          current_debuff_id:
+            openStabilityTask?.id ??
+            (existingState as GameStateRow).current_debuff_id ??
+            null,
+          status: openStabilityTask ? "debuffed" : (existingState as GameStateRow).status,
         })
         .eq("user_id", user.id);
+
+      if (updateStateError) {
+        throw updateStateError;
+      }
     } else {
-      await adminClient.from("game_state").insert({
+      const { error: insertStateError } = await adminClient.from("game_state").insert({
         user_id: user.id,
         power_balance: powerAwarded,
+        entropy: nextEntropy,
+        current_debuff_id: openStabilityTask?.id ?? null,
+        status: openStabilityTask ? "debuffed" : "active",
       });
+
+      if (insertStateError) {
+        throw insertStateError;
+      }
+    }
+
+    let assignedStabilityTaskId: string | null = null;
+    const taskEvaluation = evaluateStabilityTaskAssignment({
+      entropy: nextEntropy,
+      hasActiveStabilityTask: Boolean(openStabilityTask),
+    });
+
+    if (taskEvaluation.shouldAssign) {
+      const { data: assignedTask, error: assignedTaskError } = await adminClient
+        .from("debuffs")
+        .insert({
+          user_id: user.id,
+          debuff_type: taskEvaluation.debuffType,
+          status: "pending_reveal",
+          source_session_id: sessionId,
+          metadata: {
+            label: "Stability Task",
+            source: "Entropy Spike",
+            entropyAtAssignment: nextEntropy,
+            entropyReasons,
+          },
+        })
+        .select("id")
+        .single();
+
+      if (assignedTaskError && assignedTaskError.code !== "23505") {
+        throw assignedTaskError;
+      }
+
+      if (assignedTask) {
+        assignedStabilityTaskId = assignedTask.id;
+
+        const { error: updateAssignedStateError } = await adminClient
+          .from("game_state")
+          .update({
+            current_debuff_id: assignedStabilityTaskId,
+            status: "debuffed",
+          })
+          .eq("user_id", user.id);
+
+        if (updateAssignedStateError) {
+          throw updateAssignedStateError;
+        }
+
+        const { error: assignedEventError } = await adminClient.from("game_events").insert({
+          user_id: user.id,
+          event_type: "debuff_assigned",
+          source_type: "debuff",
+          source_id: assignedStabilityTaskId,
+          metadata: {
+            label: "Stability Task",
+            source: "Entropy Spike",
+            entropyAtAssignment: nextEntropy,
+            sourceSessionId: sessionId,
+          },
+        });
+
+        if (assignedEventError) {
+          throw assignedEventError;
+        }
+      }
     }
 
     return new Response(
@@ -281,6 +512,10 @@ Deno.serve(async (request) => {
         sessionId,
         totalVolume,
         powerAwarded,
+        entropy: nextEntropy,
+        entropyDelta,
+        entropyReasons,
+        stabilityTaskAssigned: Boolean(assignedStabilityTaskId),
         progressionUpdates,
         status: "completed",
       }),

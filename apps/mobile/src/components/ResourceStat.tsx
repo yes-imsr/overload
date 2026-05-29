@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 import { colors, spacing, typography } from "@/tokens";
 
-export type ResourceKind = "power" | "credits" | "entropy" | "neutral";
+export type ResourceKind = "power" | "credits" | "entropy" | "risk" | "neutral";
 
 type Props = {
   label: string;
@@ -13,6 +13,7 @@ const valueColor: Record<ResourceKind, string> = {
   power: colors.accent.power,
   credits: colors.accent.credits,
   entropy: colors.text.secondary,
+  risk: colors.accent.dangerBright,
   neutral: colors.text.primary,
 };
 
