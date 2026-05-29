@@ -20,6 +20,14 @@ import {
 } from "@/state/active-workout-draft-store";
 import { colors, spacing, typography } from "@/tokens";
 
+function formatActiveTargetWeight(weight: number | null): string | null {
+  if (weight === null || weight <= 0) {
+    return null;
+  }
+
+  return `${Number.isInteger(weight) ? weight : weight.toFixed(2)} lb`;
+}
+
 export default function ActiveWorkoutScreen() {
   const session = useAuthSession();
   const userId = session.data?.user.id;
@@ -117,8 +125,15 @@ export default function ActiveWorkoutScreen() {
         <View style={styles.targetRow}>
           <Text style={styles.targetLabel}>TARGET</Text>
           <Text style={styles.targetValue}>
-            {currentExercise.targetSets} sets · {currentExercise.targetRepMin}-
-            {currentExercise.targetRepMax} reps
+            {[
+              formatActiveTargetWeight(currentExercise.plannedWeight),
+              `${currentExercise.targetSets} sets`,
+              currentExercise.targetRepMin === currentExercise.targetRepMax
+                ? `${currentExercise.targetRepMax} reps`
+                : `${currentExercise.targetRepMin}-${currentExercise.targetRepMax} reps`,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </Text>
         </View>
 

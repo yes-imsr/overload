@@ -4,7 +4,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(4);
+select plan(8);
 
 select set_eq(
   $$
@@ -94,6 +94,34 @@ select is_empty(
     having count(p.policyname) = 0
   $$,
   'MVP persistence tables have RLS policies'
+);
+
+select has_column(
+  'public',
+  'workout_template_exercises',
+  'last_progression_action',
+  'template exercise rows persist last progression action'
+);
+
+select has_column(
+  'public',
+  'workout_template_exercises',
+  'last_progression_reason_code',
+  'template exercise rows persist last progression reason'
+);
+
+select has_column(
+  'public',
+  'workout_template_exercises',
+  'last_progression_source_session_id',
+  'template exercise rows link progression source session'
+);
+
+select has_column(
+  'public',
+  'workout_template_exercises',
+  'last_progression_applied_at',
+  'template exercise rows persist progression applied timestamp'
 );
 
 select * from finish();

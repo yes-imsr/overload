@@ -15,6 +15,7 @@ export type DraftExercise = {
   targetSets: number;
   targetRepMin: number;
   targetRepMax: number;
+  plannedWeight: number | null;
   sets: DraftSet[];
 };
 
@@ -39,10 +40,18 @@ type ActiveWorkoutDraftStore = {
   clearDraft: () => void;
 };
 
-function createEmptySet(setOrder: number): DraftSet {
+function formatPlannedWeight(weight: number | null): string {
+  if (weight === null || weight <= 0) {
+    return "";
+  }
+
+  return Number.isInteger(weight) ? String(weight) : String(weight);
+}
+
+function createEmptySet(setOrder: number, plannedWeight: number | null = null): DraftSet {
   return {
     setOrder,
-    weight: "",
+    weight: formatPlannedWeight(plannedWeight),
     reps: "",
     effort: null,
   };
@@ -124,7 +133,7 @@ export const useActiveWorkoutDraftStore = create<ActiveWorkoutDraftStore>((set) 
         return state;
       }
 
-      const nextSet = createEmptySet(exercise.sets.length + 1);
+      const nextSet = createEmptySet(exercise.sets.length + 1, exercise.plannedWeight);
       const exercises = state.draft.exercises.map((entry, index) =>
         index === exerciseIndex ? { ...entry, sets: [...entry.sets, nextSet] } : entry,
       );
@@ -182,6 +191,7 @@ export function buildDraftFromTemplate(input: {
     targetSets: number;
     targetRepMin: number;
     targetRepMax: number;
+    plannedWeight: number | null;
   }>;
 }): ActiveWorkoutDraft {
   return {
@@ -198,7 +208,8 @@ export function buildDraftFromTemplate(input: {
       targetSets: exercise.targetSets,
       targetRepMin: exercise.targetRepMin,
       targetRepMax: exercise.targetRepMax,
-      sets: [createEmptySet(1)],
+      plannedWeight: exercise.plannedWeight,
+      sets: [createEmptySet(1, exercise.plannedWeight)],
     })),
   };
 }

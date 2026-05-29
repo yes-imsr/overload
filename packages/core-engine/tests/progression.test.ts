@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { detectPlateau, recommendProgressionForExercise } from "../src/progression";
+import {
+  detectPlateau,
+  getHardestEffort,
+  recommendProgressionForExercise,
+  recommendProgressionsForSession,
+} from "../src/progression";
 
 describe("recommendProgressionForExercise", () => {
   const target = {
@@ -53,6 +58,109 @@ describe("recommendProgressionForExercise", () => {
         "Near Death",
       ).action,
     ).toBe("cap_reps");
+  });
+});
+
+describe("getHardestEffort", () => {
+  it("returns the highest effort in the completed set list", () => {
+    expect(getHardestEffort(["Easy", "Medium", "Hard"])).toBe("Hard");
+    expect(getHardestEffort(["Medium", "Near Death", "Easy"])).toBe("Near Death");
+  });
+
+  it("rejects empty effort lists", () => {
+    expect(() => getHardestEffort([])).toThrow(RangeError);
+  });
+});
+
+describe("recommendProgressionsForSession", () => {
+  it("uses the stored target weight when one exists", () => {
+    expect(
+      recommendProgressionsForSession([
+        {
+          exerciseId: "bench",
+          currentWeight: 100,
+          currentRepTarget: 8,
+          completedSets: [{ weight: 125, reps: 8, effort: "Easy" }],
+        },
+      ]),
+    ).toEqual([
+      {
+        exerciseId: "bench",
+        action: "increase",
+        nextWeight: 105,
+        nextRepTarget: 8,
+        reasonCode: "effort_easy_weight_up",
+      },
+    ]);
+  });
+
+  it("establishes a target from completed set load when no stored load exists", () => {
+    expect(
+      recommendProgressionsForSession([
+        {
+          exerciseId: "row",
+          currentWeight: null,
+          currentRepTarget: 10,
+          completedSets: [
+            { weight: 50, reps: 10, effort: "Medium" },
+            { weight: 55, reps: 8, effort: "Medium" },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        exerciseId: "row",
+        action: "increase",
+        nextWeight: 56.38,
+        nextRepTarget: 10,
+        reasonCode: "effort_medium_weight_up",
+      },
+    ]);
+  });
+
+  it("caps reps for a no-load Near Death exercise", () => {
+    expect(
+      recommendProgressionsForSession([
+        {
+          exerciseId: "pushup",
+          currentWeight: null,
+          currentRepTarget: 12,
+          completedSets: [{ weight: 0, reps: 10, effort: "Near Death" }],
+        },
+      ]),
+    ).toEqual([
+      {
+        exerciseId: "pushup",
+        action: "cap_reps",
+        nextWeight: 0,
+        nextRepTarget: 10,
+        reasonCode: "effort_near_death_rep_cap",
+      },
+    ]);
+  });
+
+  it("holds targets when the hardest effort is Hard", () => {
+    expect(
+      recommendProgressionsForSession([
+        {
+          exerciseId: "deadlift",
+          currentWeight: 225,
+          currentRepTarget: 5,
+          completedSets: [
+            { weight: 225, reps: 5, effort: "Medium" },
+            { weight: 225, reps: 5, effort: "Hard" },
+          ],
+        },
+      ]),
+    ).toEqual([
+      {
+        exerciseId: "deadlift",
+        action: "hold",
+        nextWeight: 225,
+        nextRepTarget: 5,
+        reasonCode: "effort_hard_hold",
+      },
+    ]);
   });
 });
 

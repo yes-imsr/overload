@@ -35,6 +35,10 @@ export type WorkoutTemplateExercise = {
   target_rep_max: number;
   planned_weight: number | null;
   equipment_id: string | null;
+  last_progression_action: "increase" | "hold" | "reduce" | "cap_reps" | null;
+  last_progression_reason_code: string | null;
+  last_progression_source_session_id: string | null;
+  last_progression_applied_at: string | null;
   exercise: Pick<Exercise, "id" | "name" | "equipment_type" | "calibration_status">;
 };
 

@@ -18,6 +18,19 @@ export interface ProgressionRecommendation {
   readonly reasonCode: string;
 }
 
+export interface CompletedProgressionSet {
+  readonly weight: number;
+  readonly reps: number;
+  readonly effort: Effort;
+}
+
+export interface ExerciseProgressionInput {
+  readonly exerciseId: string;
+  readonly currentWeight: number | null;
+  readonly currentRepTarget: number;
+  readonly completedSets: readonly CompletedProgressionSet[];
+}
+
 export interface SessionStruggleRecord {
   readonly sessionId: string;
   readonly hardestEffort: Effort;

@@ -1,4 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  recommendProgressionsForSession,
+  type Effort,
+  type ProgressionRecommendation,
+} from "@overload/core-engine";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Equipment, Profile } from "@/types/database";
 import { buildStarterTemplatePlan } from "./starter-template";
@@ -9,12 +14,90 @@ import type {
   WorkoutTemplate,
   WorkoutTemplateExercise,
 } from "./types";
+import { RPE_LABEL_TO_EFFORT } from "./types";
 
 export const builtinExercisesQueryKey = ["workouts", "builtin-exercises"] as const;
 export const starterTemplateQueryKey = (userId: string) =>
   ["workouts", "starter-template", userId] as const;
 export const workoutSessionsQueryKey = (userId: string) =>
   ["workouts", "sessions", userId] as const;
+
+type TemplateProgressionRow = Pick<
+  WorkoutTemplateExercise,
+  | "id"
+  | "exercise_id"
+  | "target_rep_min"
+  | "target_rep_max"
+  | "planned_weight"
+  | "last_progression_action"
+  | "last_progression_reason_code"
+  | "last_progression_source_session_id"
+  | "last_progression_applied_at"
+>;
+
+function toNumberOrNull(value: number | string | null): number | null {
+  if (value === null) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function groupSetsByExercise(sets: CompleteWorkoutSetInput[]) {
+  return sets.reduce((groups, set) => {
+    const entries = groups.get(set.exerciseId) ?? [];
+    entries.push(set);
+    groups.set(set.exerciseId, entries);
+    return groups;
+  }, new Map<string, CompleteWorkoutSetInput[]>());
+}
+
+function buildProgressionInputs(
+  templateRows: TemplateProgressionRow[],
+  completedSets: CompleteWorkoutSetInput[],
+) {
+  const setsByExercise = groupSetsByExercise(completedSets);
+
+  return templateRows
+    .map((row) => {
+      const exerciseSets = setsByExercise.get(row.exercise_id) ?? [];
+      if (exerciseSets.length === 0) {
+        return null;
+      }
+
+      return {
+        exerciseId: row.exercise_id,
+        currentWeight: toNumberOrNull(row.planned_weight),
+        currentRepTarget: row.target_rep_max,
+        completedSets: exerciseSets.map((set) => ({
+          weight: set.weight,
+          reps: set.reps,
+          effort: RPE_LABEL_TO_EFFORT[set.effort] as Effort,
+        })),
+      };
+    })
+    .filter((input) => input !== null);
+}
+
+function buildProgressionUpdate(
+  row: TemplateProgressionRow,
+  recommendation: ProgressionRecommendation,
+  sessionId: string,
+) {
+  const nextRepMax = recommendation.nextRepTarget;
+  const nextRepMin = Math.min(row.target_rep_min, nextRepMax);
+
+  return {
+    target_rep_min: nextRepMin,
+    target_rep_max: nextRepMax,
+    planned_weight: recommendation.nextWeight > 0 ? recommendation.nextWeight : null,
+    last_progression_action: recommendation.action,
+    last_progression_reason_code: recommendation.reasonCode,
+    last_progression_source_session_id: sessionId,
+    last_progression_applied_at: new Date().toISOString(),
+  };
+}
 
 export function useBuiltinExercises() {
   return useQuery({
@@ -72,7 +155,7 @@ export function useStarterTemplate(userId: string | undefined) {
       const { data: rows, error: rowsError } = await supabase
         .from("workout_template_exercises")
         .select(
-          "id, template_id, exercise_id, sort_order, target_sets, target_rep_min, target_rep_max, planned_weight, equipment_id, exercise:exercises(id, name, equipment_type, calibration_status)",
+          "id, template_id, exercise_id, sort_order, target_sets, target_rep_min, target_rep_max, planned_weight, equipment_id, last_progression_action, last_progression_reason_code, last_progression_source_session_id, last_progression_applied_at, exercise:exercises(id, name, equipment_type, calibration_status)",
         )
         .eq("template_id", template.id)
         .order("sort_order");
@@ -170,6 +253,7 @@ export function useEnsureStarterTemplate(
       const { error: rowError } = await supabase.from("workout_template_exercises").insert(
         plan.exercises.map((row) => ({
           template_id: template.id,
+          user_id: userId,
           exercise_id: row.exerciseId,
           sort_order: row.sortOrder,
           target_sets: row.targetSets,
@@ -282,7 +366,57 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
         throw error;
       }
 
+      const { data: sessionRow, error: sessionError } = await supabase
+        .from("workout_sessions")
+        .select("template_id")
+        .eq("id", input.sessionId)
+        .eq("user_id", userId)
+        .single();
+
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      const templateId = (sessionRow as { template_id: string | null }).template_id;
+      if (templateId) {
+        const { data: templateRows, error: templateRowsError } = await supabase
+          .from("workout_template_exercises")
+          .select(
+            "id, exercise_id, target_rep_min, target_rep_max, planned_weight, last_progression_action, last_progression_reason_code, last_progression_source_session_id, last_progression_applied_at",
+          )
+          .eq("template_id", templateId);
+
+        if (templateRowsError) {
+          throw templateRowsError;
+        }
+
+        const rows = (templateRows ?? []) as TemplateProgressionRow[];
+        const recommendations = recommendProgressionsForSession(
+          buildProgressionInputs(rows, input.sets),
+        );
+        const rowsByExercise = new Map(rows.map((row) => [row.exercise_id, row] as const));
+
+        await Promise.all(
+          recommendations.map(async (recommendation) => {
+            const row = rowsByExercise.get(recommendation.exerciseId);
+            if (!row) {
+              return;
+            }
+
+            const { error: updateError } = await supabase
+              .from("workout_template_exercises")
+              .update(buildProgressionUpdate(row, recommendation, input.sessionId))
+              .eq("id", row.id);
+
+            if (updateError) {
+              throw updateError;
+            }
+          }),
+        );
+      }
+
       await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: starterTemplateQueryKey(userId) });
       return data as {
         sessionId: string;
         totalVolume: number;

@@ -8,6 +8,8 @@ import {
   useStartWorkoutSession,
   useStarterTemplate,
 } from "@/features/workouts/queries";
+import { getProgressionReasonText } from "@/features/workouts/progression-copy";
+import type { WorkoutTemplateExercise } from "@/features/workouts/types";
 import { ScreenShell } from "@/screens/ScreenShell";
 import {
   buildDraftFromTemplate,
@@ -15,6 +17,23 @@ import {
   useActiveWorkoutDraftStore,
 } from "@/state/active-workout-draft-store";
 import { colors, spacing, typography } from "@/tokens";
+
+function formatWeightTarget(weight: number | null): string | null {
+  if (weight === null || weight <= 0) {
+    return null;
+  }
+
+  return `${Number.isInteger(weight) ? weight : weight.toFixed(2)} lb`;
+}
+
+function formatExerciseTarget(row: WorkoutTemplateExercise): string {
+  const weightTarget = formatWeightTarget(row.planned_weight);
+  const repTarget =
+    row.target_rep_min === row.target_rep_max
+      ? `${row.target_rep_max} reps`
+      : `${row.target_rep_min}-${row.target_rep_max} reps`;
+  return [weightTarget, `${row.target_sets} sets`, repTarget].filter(Boolean).join(" · ");
+}
 
 export default function TodaysWorkoutScreen() {
   const session = useAuthSession();
@@ -58,6 +77,7 @@ export default function TodaysWorkoutScreen() {
         targetSets: row.target_sets,
         targetRepMin: row.target_rep_min,
         targetRepMax: row.target_rep_max,
+        plannedWeight: row.planned_weight,
       })),
     });
 
@@ -99,8 +119,13 @@ export default function TodaysWorkoutScreen() {
                 <View key={row.id} style={styles.exerciseRow}>
                   <Text style={styles.exerciseName}>{row.exercise.name}</Text>
                   <Text style={styles.exerciseMeta}>
-                    {row.target_sets} sets · {row.target_rep_min}-{row.target_rep_max} reps
+                    {formatExerciseTarget(row)}
                   </Text>
+                  {getProgressionReasonText(row.last_progression_reason_code) ? (
+                    <Text style={styles.progressionReason}>
+                      {getProgressionReasonText(row.last_progression_reason_code)}
+                    </Text>
+                  ) : null}
                 </View>
               ))}
             </View>
@@ -148,6 +173,10 @@ const styles = StyleSheet.create({
   exerciseMeta: {
     ...typography.caption,
     color: colors.text.secondary,
+  },
+  progressionReason: {
+    ...typography.caption,
+    color: colors.accent.success,
   },
   helper: {
     ...typography.body,
