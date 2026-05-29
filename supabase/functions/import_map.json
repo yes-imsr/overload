@@ -1,5 +1,5 @@
 {
   "imports": {
-    "@overload/core-engine/": "../../../packages/core-engine/src/"
+    "@overload/core-engine/": "../../packages/core-engine/src/"
   }
 }
