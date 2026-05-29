@@ -8,6 +8,7 @@
     "mobile:android": "pnpm --filter @overload/mobile android",
     "mobile:ios": "pnpm --filter @overload/mobile ios",
     "mobile:web": "pnpm --filter @overload/mobile web",
+    "bundle:edge-core-engine": "esbuild packages/core-engine/src/edge.ts --bundle --platform=neutral --format=esm --outfile=supabase/functions/_shared/core-engine.bundle.mjs",
     "test": "pnpm --filter @overload/core-engine test",
     "test:watch": "pnpm --filter @overload/core-engine test:watch",
     "typecheck": "pnpm -r typecheck",
@@ -16,5 +17,8 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@9.15.0"
+  "packageManager": "pnpm@9.15.0",
+  "devDependencies": {
+    "esbuild": "^0.27.7"
+  }
 }

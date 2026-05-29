@@ -36,6 +36,3 @@ enable_signup = true
 [auth.email]
 enable_signup = true
 enable_confirmations = false
-
-[functions.complete-workout-session]
-import_map = "./functions/import_map.json"

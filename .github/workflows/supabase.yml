@@ -21,8 +21,49 @@ jobs:
         with:
           version: latest
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Bundle core-engine for Edge Functions
+        run: pnpm bundle:edge-core-engine
+
+      - name: Verify committed core-engine bundle matches source
+        run: git diff --exit-code supabase/functions/_shared/core-engine.bundle.mjs
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.1.4
+
+      - name: Deno check complete-workout-session entrypoint
+        run: deno check --no-lock supabase/functions/complete-workout-session/index.ts
+
       - name: Reset local database and run pgTAP
         run: |
           supabase db start
           supabase db reset --local
           supabase test db
+
+      - name: Edge Function runtime smoke (worker boot)
+        run: |
+          supabase functions serve complete-workout-session --no-verify-jwt &
+          SERVER_PID=$!
+          trap "kill $SERVER_PID 2>/dev/null || true" EXIT
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null -w "%{http_code}" -X OPTIONS \
+              http://127.0.0.1:54321/functions/v1/complete-workout-session | grep -q 200; then
+              echo "complete-workout-session worker booted successfully"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Edge Function failed to boot within 60s"
+          exit 1
