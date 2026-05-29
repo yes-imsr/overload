@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { calculatePowerFromWorkout } from "../_shared/core-engine.bundle.mjs";
+import { loadEconomySnapshot } from "../_shared/economy.ts";
 import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
@@ -256,24 +257,23 @@ Deno.serve(async (request) => {
       },
     });
 
-    const { data: existingState } = await adminClient
-      .from("game_state")
-      .select("power_balance")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    const economySnapshot = await loadEconomySnapshot(adminClient, user.id, completedAt);
+    const gameStateUpdate: Record<string, number | string> = {
+      power_balance: Number(economySnapshot.state.power_balance ?? 0) + powerAwarded,
+      idle_rate: economySnapshot.idleRate,
+    };
 
-    if (existingState) {
-      await adminClient
-        .from("game_state")
-        .update({
-          power_balance: Number(existingState.power_balance ?? 0) + powerAwarded,
-        })
-        .eq("user_id", user.id);
-    } else {
-      await adminClient.from("game_state").insert({
-        user_id: user.id,
-        power_balance: powerAwarded,
-      });
+    if (!economySnapshot.state.last_idle_claim_at) {
+      gameStateUpdate.last_idle_claim_at = completedAt;
+    }
+
+    const { error: gameStateError } = await adminClient
+      .from("game_state")
+      .update(gameStateUpdate)
+      .eq("user_id", user.id);
+
+    if (gameStateError) {
+      throw gameStateError;
     }
 
     return new Response(

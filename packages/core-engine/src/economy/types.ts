@@ -25,3 +25,13 @@ export interface ConvertPowerToCreditsInput {
   readonly idleRate: number;
   readonly elapsedHours: number;
 }
+
+export interface IdleRateNodeInput {
+  readonly baseIdleRate: number;
+  readonly level: number;
+  readonly isUnlocked: boolean;
+}
+
+export interface IdleRateCalculationInput {
+  readonly nodes: readonly IdleRateNodeInput[];
+}

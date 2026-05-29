@@ -1,4 +1,5 @@
 // packages/core-engine/src/economy/constants.ts
+var IDLE_CREDITS_PER_POWER_HOUR = 1;
 var POWER_VOLUME_DIVISOR = 62.5;
 var MIN_POWER_AWARD = 1;
 var MS_PER_HOUR = 60 * 60 * 1e3;
@@ -22,6 +23,66 @@ function calculatePowerFromWorkout(input) {
   const basePower = roundPower(rawPower);
   const powerAwarded = roundPower(Math.max(MIN_POWER_AWARD, basePower));
   return { basePower, powerAwarded };
+}
+
+// packages/core-engine/src/economy/calculateIdleCredits.ts
+function roundCredits(value) {
+  return Math.round(value * 100) / 100;
+}
+function elapsedHoursBetween(startIso, endIso) {
+  const startMs = Date.parse(startIso);
+  const endMs = Date.parse(endIso);
+  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
+    throw new RangeError("Timestamps must be valid ISO strings");
+  }
+  if (endMs < startMs) {
+    throw new RangeError("nowIso must be greater than or equal to lastClaimAtIso");
+  }
+  return (endMs - startMs) / MS_PER_HOUR;
+}
+function convertPowerToCredits(input) {
+  if (!Number.isFinite(input.powerAmount) || input.powerAmount < 0) {
+    throw new RangeError("powerAmount must be a non-negative finite number");
+  }
+  if (!Number.isFinite(input.idleRate) || input.idleRate < 0) {
+    throw new RangeError("idleRate must be a non-negative finite number");
+  }
+  if (!Number.isFinite(input.elapsedHours) || input.elapsedHours < 0) {
+    throw new RangeError("elapsedHours must be a non-negative finite number");
+  }
+  const cappedHours = Math.min(input.elapsedHours, MAX_IDLE_ACCRUAL_HOURS);
+  return roundCredits(
+    input.powerAmount * input.idleRate * IDLE_CREDITS_PER_POWER_HOUR * cappedHours
+  );
+}
+function calculateIdleCredits(input) {
+  const elapsedHours = elapsedHoursBetween(input.lastClaimAtIso, input.nowIso);
+  const creditsGenerated = convertPowerToCredits({
+    powerAmount: input.powerBalance,
+    idleRate: input.idleRate,
+    elapsedHours
+  });
+  return { elapsedHours, creditsGenerated };
+}
+
+// packages/core-engine/src/economy/calculateIdleRateFromNodes.ts
+function roundIdleRate(value) {
+  return Math.round(value * 1e4) / 1e4;
+}
+function calculateIdleRateFromNodes(input) {
+  const totalRate = input.nodes.reduce((total, node) => {
+    if (!Number.isFinite(node.baseIdleRate) || node.baseIdleRate < 0) {
+      throw new RangeError("baseIdleRate must be a non-negative finite number");
+    }
+    if (!Number.isInteger(node.level) || node.level < 0) {
+      throw new RangeError("level must be a non-negative integer");
+    }
+    if (!node.isUnlocked || node.level === 0) {
+      return total;
+    }
+    return total + node.baseIdleRate * node.level;
+  }, 0);
+  return roundIdleRate(totalRate);
 }
 
 // packages/core-engine/src/progression/constants.ts
@@ -153,7 +214,10 @@ function recommendProgressionForSession(targets, sessionEfforts) {
   });
 }
 export {
+  calculateIdleCredits,
+  calculateIdleRateFromNodes,
   calculatePowerFromWorkout,
+  convertPowerToCredits,
   effortFromRpeLabel,
   recommendProgressionForSession
 };

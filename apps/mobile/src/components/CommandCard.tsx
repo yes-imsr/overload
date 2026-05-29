@@ -7,12 +7,14 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
+import type { ReactNode } from "react";
 import { colors, radius, spacing, typography } from "@/tokens";
 
 type Props = Omit<PressableProps, "style"> & {
   title: string;
   subtitle?: string;
   statusLabel?: string;
+  children?: ReactNode;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -20,6 +22,7 @@ export function CommandCard({
   title,
   subtitle,
   statusLabel,
+  children,
   style,
   ...rest
 }: Props) {
@@ -39,6 +42,7 @@ export function CommandCard({
         ) : null}
       </View>
       {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+      {children}
     </Pressable>
   );
 }

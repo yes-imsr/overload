@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateIdleCredits,
+  calculateIdleRateFromNodes,
   calculatePowerFromWorkout,
   convertPowerToCredits,
 } from "../src/economy";
@@ -77,6 +78,40 @@ describe("calculateIdleCredits", () => {
         idleRate: 1,
         lastClaimAtIso: "2026-05-28T14:00:00.000Z",
         nowIso: "2026-05-28T10:00:00.000Z",
+      }),
+    ).toThrow(RangeError);
+  });
+});
+
+describe("calculateIdleRateFromNodes", () => {
+  it("sums unlocked node rates by level", () => {
+    expect(
+      calculateIdleRateFromNodes({
+        nodes: [
+          { baseIdleRate: 1, level: 1, isUnlocked: true },
+          { baseIdleRate: 1.5, level: 1, isUnlocked: true },
+          { baseIdleRate: 9, level: 0, isUnlocked: true },
+          { baseIdleRate: 4, level: 1, isUnlocked: false },
+        ],
+      }),
+    ).toBe(2.5);
+  });
+
+  it("rounds deterministic fractional node rates", () => {
+    expect(
+      calculateIdleRateFromNodes({
+        nodes: [
+          { baseIdleRate: 0.33333, level: 1, isUnlocked: true },
+          { baseIdleRate: 0.33333, level: 2, isUnlocked: true },
+        ],
+      }),
+    ).toBe(1);
+  });
+
+  it("rejects invalid node rate input", () => {
+    expect(() =>
+      calculateIdleRateFromNodes({
+        nodes: [{ baseIdleRate: -1, level: 1, isUnlocked: true }],
       }),
     ).toThrow(RangeError);
   });

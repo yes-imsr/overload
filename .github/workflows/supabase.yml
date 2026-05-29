@@ -43,8 +43,11 @@ jobs:
         with:
           deno-version: v2.1.4
 
-      - name: Deno check complete-workout-session entrypoint
-        run: deno check --no-lock supabase/functions/complete-workout-session/index.ts
+      - name: Deno check Edge Function entrypoints
+        run: |
+          deno check --no-lock supabase/functions/complete-workout-session/index.ts
+          deno check --no-lock supabase/functions/claim-credits/index.ts
+          deno check --no-lock supabase/functions/upgrade-node/index.ts
 
       - name: Reset local database and run pgTAP
         run: |

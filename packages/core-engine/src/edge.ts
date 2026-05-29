@@ -2,6 +2,8 @@
  * Edge Function entry: re-exports domain helpers for esbuild bundling into Supabase.
  */
 export { calculatePowerFromWorkout } from "./economy/calculatePowerFromWorkout";
+export { calculateIdleCredits, convertPowerToCredits } from "./economy/calculateIdleCredits";
+export { calculateIdleRateFromNodes } from "./economy/calculateIdleRateFromNodes";
 export {
   effortFromRpeLabel,
   recommendProgressionForSession,

@@ -5,6 +5,8 @@ Edge Functions for server-validated workout completion, progression, prestige, d
 | Function | Purpose |
 |----------|---------|
 | `complete-workout-session` | Finalize in-progress sessions, calculate volume/Power server-side, apply progression from `@overload/core-engine`, append game events |
+| `claim-credits` | Claim elapsed Credits from stored Power through server-owned economy state |
+| `upgrade-node` | Spend Credits on MVP nodes and recalculate the server-owned idle rate |
 
 Edge functions consume domain logic from `@overload/core-engine` via a bundled artifact:
 

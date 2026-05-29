@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select plan(24);
+select plan(25);
 
 insert into auth.users (
   id,
@@ -166,6 +166,41 @@ select
 from public.nodes
 where slug = 'core-reactor'
 limit 1;
+
+set local role service_role;
+
+do $$
+begin
+  perform set_config(
+    'request.jwt.claims',
+    '{"sub":"00000000-0000-4000-8000-000000000020","role":"service_role"}',
+    true
+  );
+end;
+$$;
+
+select lives_ok(
+  $$
+    insert into public.game_events (
+      user_id,
+      event_type,
+      source_type,
+      source_id,
+      credits_delta
+    )
+    select
+      '00000000-0000-4000-8000-000000000020',
+      'node_upgraded',
+      'node',
+      id,
+      -100
+    from public.nodes
+    where slug = 'credit-condenser'
+  $$,
+  'node upgrade economy events are accepted for trusted writes'
+);
+
+reset role;
 
 set local role authenticated;
 
