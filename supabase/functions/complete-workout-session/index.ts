@@ -1,10 +1,21 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
-import { calculatePowerFromWorkout } from "../_shared/core-engine.bundle.mjs";
+import {
+  applyPowerGainModifier,
+  calculatePowerFromWorkout,
+} from "../_shared/core-engine.bundle.mjs";
 import { settleIdleCreditsAt } from "../_shared/economy.ts";
 import {
   recommendProgressionForSessionFromRpe,
   type ProgressionRecommendation,
 } from "../_shared/progression.ts";
+import {
+  applyWorkoutEntropy,
+  assignStabilityTaskIfNeeded,
+  ensureGameState,
+  fetchCurrentDebuff,
+  hasNearDeathEffort,
+  resolveStabilityTaskRecord,
+} from "../_shared/stability.ts";
 import type { AdminClient } from "../_shared/supabase-types.ts";
 
 const corsHeaders = {
@@ -211,11 +222,24 @@ Deno.serve(async (request) => {
       });
     }
 
+    const gameState = await ensureGameState(adminClient, user.id);
+    const activeDebuff = await fetchCurrentDebuff(
+      adminClient,
+      user.id,
+      gameState.current_debuff_id,
+    );
+    const hasActivePowerDebuff = activeDebuff?.status === "active";
+
     const totalVolume = calculateTotalVolume(completedSets);
     const workingSetCount = completedSets.filter((set) => set.set_type === "working").length;
-    const { powerAwarded } = calculatePowerFromWorkout({
+    const { powerAwarded: basePower } = calculatePowerFromWorkout({
       totalVolume,
       totalWorkingSets: workingSetCount,
+    });
+    const { powerAwarded } = applyPowerGainModifier({
+      basePower,
+      hasActivePowerGainDebuff: hasActivePowerDebuff,
+      debuffEffectValue: activeDebuff?.effect_value,
     });
     const completedAt = new Date().toISOString();
 
@@ -245,6 +269,25 @@ Deno.serve(async (request) => {
       );
     }
 
+    if (hasActivePowerDebuff && activeDebuff) {
+      await resolveStabilityTaskRecord(adminClient, user.id, activeDebuff.id, {
+        resolutionType: "workout_completion",
+        sessionId,
+      });
+    }
+
+    const entropyAfterWorkout = await applyWorkoutEntropy(
+      adminClient,
+      user.id,
+      {
+        hasNearDeathEffort: hasNearDeathEffort(completedSets),
+        staleExerciseCount: 0,
+      },
+      completedAt,
+    );
+
+    await assignStabilityTaskIfNeeded(adminClient, user.id, entropyAfterWorkout, sessionId);
+
     await adminClient.from("game_events").insert({
       user_id: user.id,
       event_type: "workout_completed",
@@ -255,6 +298,8 @@ Deno.serve(async (request) => {
         clientMutationId,
         totalVolume,
         progressionUpdates,
+        basePower,
+        powerDebuffApplied: hasActivePowerDebuff,
       },
     });
 
