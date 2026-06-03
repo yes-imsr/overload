@@ -15,6 +15,7 @@ type Options = {
 export type OnboardingRedirectState = {
   redirect: OnboardingRoute | null;
   isLoading: boolean;
+  error: string | null;
 };
 
 export function useOnboardingRedirectState(
@@ -29,11 +30,19 @@ export function useOnboardingRedirectState(
     sessionQuery.isLoading || (Boolean(userId) && profileQuery.isLoading);
 
   if (isLoading) {
-    return { redirect: null, isLoading: true };
+    return { redirect: null, isLoading: true, error: null };
+  }
+
+  if (sessionQuery.isError) {
+    return {
+      redirect: "/welcome",
+      isLoading: false,
+      error: "Unable to restore session. Sign in again.",
+    };
   }
 
   if (!isSupabaseConfigured()) {
-    return { redirect: "/welcome", isLoading: false };
+    return { redirect: "/welcome", isLoading: false, error: null };
   }
 
   const route = resolveOnboardingRoute({
@@ -44,15 +53,16 @@ export function useOnboardingRedirectState(
 
   if (guardApp) {
     if (isOnboardingComplete(profileQuery.data?.onboarding_status)) {
-      return { redirect: null, isLoading: false };
+      return { redirect: null, isLoading: false, error: null };
     }
     return {
       redirect: route === APP_HOME_ROUTE ? "/training-profile" : route,
       isLoading: false,
+      error: null,
     };
   }
 
-  return { redirect: route, isLoading: false };
+  return { redirect: route, isLoading: false, error: null };
 }
 
 export function useOnboardingRedirect(options: Options = {}): OnboardingRoute | null {

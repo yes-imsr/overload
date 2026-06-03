@@ -8,6 +8,10 @@ import { FormField } from "@/components/FormField";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { authSessionQueryKey } from "@/features/onboarding/queries";
 import { resolveOnboardingRoute } from "@/features/onboarding/onboarding-routes";
+import {
+  formatAuthError,
+  validateAuthCredentials,
+} from "@/lib/auth-errors";
 import { supabase } from "@/lib/supabase";
 import { colors, spacing, typography } from "@/tokens";
 
@@ -31,6 +35,12 @@ export default function SignInScreen() {
   const submit = async () => {
     if (!supabase) {
       setError("Supabase is not configured.");
+      return;
+    }
+
+    const validationError = validateAuthCredentials(email, password);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -77,9 +87,7 @@ export default function SignInScreen() {
         router.replace(next);
       }
     } catch (caught) {
-      const message =
-        caught instanceof Error ? caught.message : "Authentication failed.";
-      setError(message);
+      setError(formatAuthError(mode, caught));
     } finally {
       setLoading(false);
     }

@@ -1,16 +1,24 @@
 import { Redirect, Stack, usePathname } from "expo-router";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useOnboardingRedirectState } from "@/hooks/use-onboarding-redirect";
-import { colors } from "@/tokens";
+import { colors, typography } from "@/tokens";
 
 export default function AuthLayout() {
   const pathname = usePathname();
-  const { redirect, isLoading } = useOnboardingRedirectState({ guardApp: false });
+  const { redirect, isLoading, error } = useOnboardingRedirectState({ guardApp: false });
 
   if (isLoading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.text.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.loading}>
+        <Text style={styles.error}>{error}</Text>
       </View>
     );
   }
@@ -45,5 +53,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.background.primary,
+    padding: 24,
+  },
+  error: {
+    ...typography.caption,
+    color: colors.accent.dangerBright,
+    textAlign: "center",
   },
 });
