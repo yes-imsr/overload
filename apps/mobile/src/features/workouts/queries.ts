@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { economySnapshotQueryKey } from "@/features/economy/queries";
+import {
+  revealPendingStabilityTaskIfNeeded,
+  stabilitySnapshotQueryKey,
+} from "@/features/stability/queries";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { Equipment, Profile } from "@/types/database";
 import { buildStarterTemplatePlan } from "./starter-template";
@@ -16,6 +20,8 @@ export const starterTemplateQueryKey = (userId: string) =>
   ["workouts", "starter-template", userId] as const;
 export const workoutSessionsQueryKey = (userId: string) =>
   ["workouts", "sessions", userId] as const;
+export const inProgressWorkoutQueryKey = (userId: string) =>
+  ["workouts", "in-progress", userId] as const;
 
 export function useBuiltinExercises() {
   return useQuery({
@@ -218,7 +224,20 @@ export function useStartWorkoutSession(userId: string | undefined) {
       }
 
       await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: inProgressWorkoutQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: stabilitySnapshotQueryKey(userId) });
       return data as WorkoutSession;
+    },
+    onSuccess: async (session) => {
+      if (!userId) {
+        return;
+      }
+
+      try {
+        await revealPendingStabilityTaskIfNeeded(session.id);
+      } finally {
+        await queryClient.invalidateQueries({ queryKey: stabilitySnapshotQueryKey(userId) });
+      }
     },
   });
 }
@@ -284,14 +303,43 @@ export function useCompleteWorkoutSession(userId: string | undefined) {
       }
 
       await queryClient.invalidateQueries({ queryKey: workoutSessionsQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: inProgressWorkoutQueryKey(userId) });
       await queryClient.invalidateQueries({ queryKey: starterTemplateQueryKey(userId) });
       await queryClient.invalidateQueries({ queryKey: economySnapshotQueryKey(userId) });
+      await queryClient.invalidateQueries({ queryKey: stabilitySnapshotQueryKey(userId) });
       return data as {
         sessionId: string;
         totalVolume: number;
         powerAwarded: number;
         status: "completed";
       };
+    },
+  });
+}
+
+export function useInProgressWorkoutSession(userId: string | undefined) {
+  return useQuery({
+    queryKey: inProgressWorkoutQueryKey(userId ?? "none"),
+    enabled: Boolean(supabase && userId),
+    queryFn: async (): Promise<WorkoutSession | null> => {
+      if (!supabase || !userId) {
+        throw new Error("Supabase session required");
+      }
+
+      const { data, error } = await supabase
+        .from("workout_sessions")
+        .select("id, user_id, template_id, status, started_at, completed_at, client_session_key, total_volume, power_awarded")
+        .eq("user_id", userId)
+        .eq("status", "in_progress")
+        .order("started_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      return (data as WorkoutSession | null) ?? null;
     },
   });
 }
