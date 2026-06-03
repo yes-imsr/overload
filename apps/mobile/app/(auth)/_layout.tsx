@@ -1,11 +1,11 @@
 import { Redirect, Stack, usePathname } from "expo-router";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useOnboardingRedirectState } from "@/hooks/use-onboarding-redirect";
-import { colors, typography } from "@/tokens";
+import { colors } from "@/tokens";
 
 export default function AuthLayout() {
   const pathname = usePathname();
-  const { redirect, isLoading, error } = useOnboardingRedirectState({ guardApp: false });
+  const { redirect, isLoading } = useOnboardingRedirectState({ guardApp: false });
 
   if (isLoading) {
     return (
@@ -15,17 +15,10 @@ export default function AuthLayout() {
     );
   }
 
-  if (error) {
-    return (
-      <View style={styles.loading}>
-        <Text style={styles.error}>{error}</Text>
-      </View>
-    );
-  }
-
   if (redirect) {
+    const signedOutRoutes = new Set(["/welcome", "/sign-in"]);
     const canAccessSignedOutRoute =
-      redirect === "/welcome" && (pathname === "/welcome" || pathname === "/sign-in");
+      redirect === "/welcome" && signedOutRoutes.has(pathname);
 
     if (!canAccessSignedOutRoute && pathname !== redirect) {
       return <Redirect href={redirect} />;
@@ -53,11 +46,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.background.primary,
-    padding: 24,
-  },
-  error: {
-    ...typography.caption,
-    color: colors.accent.dangerBright,
-    textAlign: "center",
   },
 });

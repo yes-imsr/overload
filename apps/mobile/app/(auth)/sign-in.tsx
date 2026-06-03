@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { PrimaryCTAButton } from "@/components";
 import { FormField } from "@/components/FormField";
 import { OnboardingShell } from "@/components/OnboardingShell";
+import { SessionRestoreNotice } from "@/components/SessionRestoreNotice";
 import { authSessionQueryKey } from "@/features/onboarding/queries";
 import { resolveOnboardingRoute } from "@/features/onboarding/onboarding-routes";
 import {
@@ -100,6 +101,7 @@ export default function SignInScreen() {
       body="Use email credentials. No social import, wearables, or nutrition setup in MVP."
       footer={
         <>
+          <SessionRestoreNotice />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <PrimaryCTAButton
             label={mode === "sign_in" ? "Sign in" : "Create account"}
