@@ -1,8 +1,11 @@
 import { Stack } from "expo-router";
+import * as WebBrowser from "expo-web-browser";
 import { StatusBar } from "expo-status-bar";
 import { StyleSheet, View } from "react-native";
 import { AppProviders } from "@/providers/app-providers";
 import { colors } from "@/tokens";
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function RootLayout() {
   return (

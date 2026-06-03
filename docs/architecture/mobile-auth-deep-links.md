@@ -57,8 +57,28 @@ If QA uses Expo Go against a hosted Supabase project, also allow the Expo Go cal
    - `supabase.auth.setSession()` for token fragments, or
    - `supabase.auth.exchangeCodeForSession()` for PKCE auth codes.
 4. Recovery callbacks (`type=recovery`) route to `/reset-password`.
-5. Other successful callbacks route through onboarding resolution.
-6. Malformed or expired callbacks show a safe error state and return the user to `/sign-in`.
+5. Google OAuth callbacks reuse the same route through `signInWithGoogle()` and `/auth/callback`.
+6. Other successful callbacks route through onboarding resolution.
+7. Malformed or expired callbacks show a safe error state and return the user to `/sign-in`.
+
+## Google OAuth
+
+Mobile uses Supabase OAuth with `provider: "google"`. Provider client secrets stay in Supabase configuration only — never in `apps/mobile`.
+
+### Mobile flow
+
+1. Sign-in screen calls `supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: createAuthRedirectUrl(), skipBrowserRedirect: true } })`.
+2. Expo opens the provider URL with `expo-web-browser`.
+3. Google redirects back to `createAuthRedirectUrl()`.
+4. The app completes the callback with the shared auth callback helper and loads the existing profile via `auth.users.id`.
+
+### Supabase / Google console configuration
+
+- **Supabase redirect allowlist:** include all values listed above (`overload://auth/callback`, Expo Go callback URLs).
+- **Google Cloud OAuth client:** authorized redirect URI must be the Supabase Auth callback for the project, e.g. `https://<project-ref>.supabase.co/auth/v1/callback` (hosted) or `http://127.0.0.1:54321/auth/v1/callback` (local CLI).
+- **Local CLI secrets:** set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in the environment used by `supabase start`. See `supabase/config.toml` `[auth.external.google]`.
+
+New Google users receive `profiles` and `game_state` rows from the existing `handle_new_user` trigger (`ON CONFLICT DO NOTHING`), so returning users keep profile, workout, calibration, and game state tied to the same `auth.users.id`.
 
 ## Security notes
 

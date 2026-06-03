@@ -5,12 +5,12 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { PrimaryCTAButton } from "@/components";
 import { OnboardingShell } from "@/components/OnboardingShell";
-import { resolveOnboardingRoute } from "@/features/onboarding/onboarding-routes";
-import { authSessionQueryKey } from "@/features/onboarding/queries";
+import { resolveAuthenticatedRoute } from "@/lib/auth-session";
 import { completeAuthCallback } from "@/lib/auth-callback";
 import { isAuthCallbackUrl } from "@/lib/auth-linking";
 import { supabase } from "@/lib/supabase";
 import { colors, typography } from "@/tokens";
+import { authSessionQueryKey } from "@/features/onboarding/queries";
 
 type CallbackState = "loading" | "error";
 
@@ -60,25 +60,15 @@ export default function AuthCallbackScreen() {
           return;
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("onboarding_status")
-          .eq("id", result.session.user.id)
-          .single();
+        const nextRoute = await resolveAuthenticatedRoute(result.session);
 
-        if (profileError) {
-          setError("Session restored, but profile state is unavailable. Sign in again.");
+        if (nextRoute.status === "error") {
+          setError(nextRoute.message);
           setState("error");
           return;
         }
 
-        const next = resolveOnboardingRoute({
-          hasSession: true,
-          onboardingStatus: profile.onboarding_status,
-          isLoading: false,
-        });
-
-        router.replace(next ?? "/welcome");
+        router.replace(nextRoute.route);
       } catch {
         if (!cancelled) {
           setError("Invalid auth callback link.");
