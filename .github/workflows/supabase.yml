@@ -49,6 +49,9 @@ jobs:
           deno check --no-lock supabase/functions/economy-snapshot/index.ts
           deno check --no-lock supabase/functions/claim-idle-credits/index.ts
           deno check --no-lock supabase/functions/upgrade-node/index.ts
+          deno check --no-lock supabase/functions/stability-snapshot/index.ts
+          deno check --no-lock supabase/functions/reveal-debuff/index.ts
+          deno check --no-lock supabase/functions/resolve-debuff/index.ts
 
       - name: Reset local database and run pgTAP
         run: |
