@@ -43,7 +43,15 @@ function extractParamString(url: string): string {
   return "";
 }
 
-function parseParamString(paramString: string): Record<string, string> {
+function safeDecodeURIComponent(value: string): string | null {
+  try {
+    return decodeURIComponent(value.replace(/\+/g, " "));
+  } catch {
+    return null;
+  }
+}
+
+function parseParamString(paramString: string): Record<string, string> | null {
   if (!paramString) {
     return {};
   }
@@ -63,9 +71,14 @@ function parseParamString(paramString: string): Record<string, string> {
       continue;
     }
 
-    params[decodeURIComponent(rawKey)] = decodeURIComponent(
-      rawValue.replace(/\+/g, " "),
-    );
+    const key = safeDecodeURIComponent(rawKey);
+    const value = safeDecodeURIComponent(rawValue);
+
+    if (key === null || value === null) {
+      return null;
+    }
+
+    params[key] = value;
   }
 
   return params;
@@ -81,6 +94,13 @@ export function parseAuthCallbackUrl(url: string): ParsedAuthCallback {
   }
 
   const params = parseParamString(extractParamString(url));
+
+  if (params === null) {
+    return {
+      status: "malformed",
+      message: "Invalid auth callback link.",
+    };
+  }
 
   return {
     status: "tokens",

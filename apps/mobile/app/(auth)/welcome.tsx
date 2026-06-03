@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { useOnboardingRedirect } from "@/hooks/use-onboarding-redirect";
 import { PrimaryCTAButton } from "@/components";
 import { OnboardingShell } from "@/components/OnboardingShell";
+import { SessionRestoreNotice } from "@/components/SessionRestoreNotice";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { colors, spacing, typography } from "@/tokens";
 
@@ -25,6 +26,7 @@ export default function WelcomeScreen() {
       body="The system adapts to your output. Initialize your operator profile to enter the reactor console."
       footer={
         <>
+          <SessionRestoreNotice />
           {!isSupabaseConfigured() ? (
             <Text style={styles.configWarning}>
               Supabase is not configured. Set EXPO_PUBLIC_SUPABASE_URL and

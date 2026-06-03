@@ -58,4 +58,9 @@ describe("auth-linking-parse", () => {
       "Invalid auth callback. Request a new link and try again.",
     );
   });
+
+  it("treats invalid percent-encoding as malformed", () => {
+    const parsed = parseAuthCallbackUrl("overload://auth/callback#access_token=%E0%A4%A");
+    expect(parsed.status).toBe("malformed");
+  });
 });

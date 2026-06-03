@@ -24,60 +24,67 @@ export default function AuthCallbackScreen() {
     let cancelled = false;
 
     async function handleCallback() {
-      const callbackUrl = incomingUrl ?? (await Linking.getInitialURL());
+      try {
+        const callbackUrl = incomingUrl ?? (await Linking.getInitialURL());
 
-      if (!callbackUrl || !isAuthCallbackUrl(callbackUrl)) {
+        if (!callbackUrl || !isAuthCallbackUrl(callbackUrl)) {
+          if (!cancelled) {
+            setError("Invalid auth callback link.");
+            setState("error");
+          }
+          return;
+        }
+
+        const result = await completeAuthCallback(callbackUrl);
+
+        if (cancelled) {
+          return;
+        }
+
+        if (result.status === "error") {
+          setError(result.message);
+          setState("error");
+          return;
+        }
+
+        queryClient.setQueryData(authSessionQueryKey, result.session);
+
+        if (result.type === "recovery") {
+          router.replace("/reset-password" as Href);
+          return;
+        }
+
+        if (!supabase) {
+          setError("Supabase is not configured.");
+          setState("error");
+          return;
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("onboarding_status")
+          .eq("id", result.session.user.id)
+          .single();
+
+        if (profileError) {
+          setError("Session restored, but profile state is unavailable. Sign in again.");
+          setState("error");
+          return;
+        }
+
+        const next = resolveOnboardingRoute({
+          hasSession: true,
+          onboardingStatus: profile.onboarding_status,
+          isLoading: false,
+        });
+
+        router.replace(next ?? "/welcome");
+      } catch {
         if (!cancelled) {
           setError("Invalid auth callback link.");
           setState("error");
         }
-        return;
       }
-
-      const result = await completeAuthCallback(callbackUrl);
-
-      if (cancelled) {
-        return;
-      }
-
-      if (result.status === "error") {
-        setError(result.message);
-        setState("error");
-        return;
-      }
-
-      queryClient.setQueryData(authSessionQueryKey, result.session);
-
-      if (result.type === "recovery") {
-        router.replace("/reset-password" as Href);
-        return;
-      }
-
-      if (!supabase) {
-        setError("Supabase is not configured.");
-        setState("error");
-        return;
-      }
-
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("onboarding_status")
-        .eq("id", result.session.user.id)
-        .single();
-
-      if (profileError) {
-        setError("Session restored, but profile state is unavailable. Sign in again.");
-        setState("error");
-        return;
-      }
-
-      const next = resolveOnboardingRoute({
-        hasSession: true,
-        onboardingStatus: profile.onboarding_status,
-        isLoading: false,
-      });
-
-      router.replace(next ?? "/welcome");
     }
 
     void handleCallback();
