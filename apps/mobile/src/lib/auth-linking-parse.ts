@@ -1,0 +1,133 @@
+/** Custom URL scheme registered in app.json for production/dev builds. */
+export const AUTH_APP_SCHEME = "overload";
+
+/** Expo Router path segment for the auth callback screen. */
+export const AUTH_CALLBACK_PATH = "auth/callback";
+
+/** In-app route used by Expo Router for auth callbacks. */
+export const AUTH_CALLBACK_ROUTE = "/auth/callback" as const;
+
+export type AuthCallbackParams = {
+  accessToken: string | null;
+  refreshToken: string | null;
+  authCode: string | null;
+  type: string | null;
+  error: string | null;
+  errorDescription: string | null;
+};
+
+export type ParsedAuthCallback =
+  | { status: "tokens"; params: AuthCallbackParams }
+  | { status: "malformed"; message: string };
+
+export function isAuthCallbackUrl(url: string): boolean {
+  const normalized = url.toLowerCase();
+  return (
+    normalized.includes(`${AUTH_APP_SCHEME}://${AUTH_CALLBACK_PATH}`) ||
+    normalized.includes(`/${AUTH_CALLBACK_PATH}`) ||
+    normalized.includes(`/--/${AUTH_CALLBACK_PATH}`)
+  );
+}
+
+function extractParamString(url: string): string {
+  const hashIndex = url.indexOf("#");
+  if (hashIndex >= 0) {
+    return url.slice(hashIndex + 1);
+  }
+
+  const queryIndex = url.indexOf("?");
+  if (queryIndex >= 0) {
+    return url.slice(queryIndex + 1);
+  }
+
+  return "";
+}
+
+function parseParamString(paramString: string): Record<string, string> {
+  if (!paramString) {
+    return {};
+  }
+
+  const params: Record<string, string> = {};
+
+  for (const part of paramString.split("&")) {
+    if (!part) {
+      continue;
+    }
+
+    const separatorIndex = part.indexOf("=");
+    const rawKey = separatorIndex >= 0 ? part.slice(0, separatorIndex) : part;
+    const rawValue = separatorIndex >= 0 ? part.slice(separatorIndex + 1) : "";
+
+    if (!rawKey) {
+      continue;
+    }
+
+    params[decodeURIComponent(rawKey)] = decodeURIComponent(
+      rawValue.replace(/\+/g, " "),
+    );
+  }
+
+  return params;
+}
+
+/** Parses Supabase auth callback URLs from hash fragments or query strings. */
+export function parseAuthCallbackUrl(url: string): ParsedAuthCallback {
+  if (!isAuthCallbackUrl(url)) {
+    return {
+      status: "malformed",
+      message: "Invalid auth callback link.",
+    };
+  }
+
+  const params = parseParamString(extractParamString(url));
+
+  return {
+    status: "tokens",
+    params: {
+      accessToken: params.access_token ?? null,
+      refreshToken: params.refresh_token ?? null,
+      authCode: params.code ?? null,
+      type: params.type ?? null,
+      error: params.error ?? null,
+      errorDescription: params.error_description ?? null,
+    },
+  };
+}
+
+/** Maps callback/provider errors to safe user-facing copy. */
+export function formatAuthCallbackError(
+  error: string | null,
+  errorDescription: string | null,
+): string {
+  const normalized = `${error ?? ""} ${errorDescription ?? ""}`.toLowerCase();
+
+  if (
+    normalized.includes("expired") ||
+    normalized.includes("invalid") ||
+    normalized.includes("otp")
+  ) {
+    return "This auth link is invalid or expired. Request a new link and try again.";
+  }
+
+  return "Unable to complete auth callback. Return to sign in and try again.";
+}
+
+export function getAuthCallbackFailureMessage(parsed: ParsedAuthCallback): string {
+  if (parsed.status === "malformed") {
+    return parsed.message;
+  }
+
+  if (parsed.params.error) {
+    return formatAuthCallbackError(parsed.params.error, parsed.params.errorDescription);
+  }
+
+  const hasTokens = Boolean(parsed.params.accessToken && parsed.params.refreshToken);
+  const hasCode = Boolean(parsed.params.authCode);
+
+  if (!hasTokens && !hasCode) {
+    return "Invalid auth callback. Request a new link and try again.";
+  }
+
+  return "Unable to complete auth callback. Return to sign in and try again.";
+}

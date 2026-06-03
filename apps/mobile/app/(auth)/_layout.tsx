@@ -24,10 +24,19 @@ export default function AuthLayout() {
   }
 
   if (redirect) {
+    const signedOutRoutes = new Set([
+      "/welcome",
+      "/sign-in",
+      "/forgot-password",
+      "/auth/callback",
+      "/reset-password",
+    ]);
+    const recoveryRoutes = new Set(["/auth/callback", "/reset-password"]);
     const canAccessSignedOutRoute =
-      redirect === "/welcome" && (pathname === "/welcome" || pathname === "/sign-in");
+      redirect === "/welcome" && signedOutRoutes.has(pathname);
+    const canAccessRecoveryRoute = recoveryRoutes.has(pathname);
 
-    if (!canAccessSignedOutRoute && pathname !== redirect) {
+    if (!canAccessSignedOutRoute && !canAccessRecoveryRoute && pathname !== redirect) {
       return <Redirect href={redirect} />;
     }
   }
@@ -41,6 +50,9 @@ export default function AuthLayout() {
     >
       <Stack.Screen name="welcome" />
       <Stack.Screen name="sign-in" />
+      <Stack.Screen name="forgot-password" />
+      <Stack.Screen name="reset-password" />
+      <Stack.Screen name="auth/callback" />
       <Stack.Screen name="training-profile" />
       <Stack.Screen name="equipment" />
     </Stack>

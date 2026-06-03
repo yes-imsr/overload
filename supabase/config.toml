@@ -29,7 +29,13 @@ port = 54323
 [auth]
 enabled = true
 site_url = "http://127.0.0.1:3000"
-additional_redirect_urls = ["exp://127.0.0.1:8081"]
+additional_redirect_urls = [
+  "exp://127.0.0.1:8081",
+  "exp://127.0.0.1:8081/--/auth/callback",
+  "exp://localhost:8081",
+  "exp://localhost:8081/--/auth/callback",
+  "overload://auth/callback",
+]
 jwt_expiry = 3600
 enable_signup = true
 
