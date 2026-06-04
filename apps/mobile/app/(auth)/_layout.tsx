@@ -16,8 +16,9 @@ export default function AuthLayout() {
   }
 
   if (redirect) {
+    const signedOutRoutes = new Set(["/welcome", "/sign-in"]);
     const canAccessSignedOutRoute =
-      redirect === "/welcome" && (pathname === "/welcome" || pathname === "/sign-in");
+      redirect === "/welcome" && signedOutRoutes.has(pathname);
 
     if (!canAccessSignedOutRoute && pathname !== redirect) {
       return <Redirect href={redirect} />;

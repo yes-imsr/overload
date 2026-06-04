@@ -12,6 +12,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    void supabase.auth.getSession().then(({ data: { session } }) => {
+      queryClient.setQueryData(authSessionQueryKey, session);
+    });
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {

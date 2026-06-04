@@ -1,10 +1,12 @@
 import { Redirect } from "expo-router";
+import { PropsWithChildren } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { useOnboardingRedirectState } from "@/hooks/use-onboarding-redirect";
 import { colors } from "@/tokens";
 
-export default function IndexRoute() {
-  const { redirect, isLoading } = useOnboardingRedirectState();
+/** Blocks signed-out and incomplete-onboarding users from protected routes. */
+export function SessionGate({ children }: PropsWithChildren) {
+  const { redirect, isLoading } = useOnboardingRedirectState({ guardApp: true });
 
   if (isLoading) {
     return (
@@ -14,15 +16,11 @@ export default function IndexRoute() {
     );
   }
 
-  if (!redirect) {
-    return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={colors.text.primary} />
-      </View>
-    );
+  if (redirect) {
+    return <Redirect href={redirect} />;
   }
 
-  return <Redirect href={redirect} />;
+  return children;
 }
 
 const styles = StyleSheet.create({
@@ -31,5 +29,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: colors.background.primary,
+    padding: 24,
   },
 });
