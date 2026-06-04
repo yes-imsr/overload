@@ -20,13 +20,45 @@ export type ParsedAuthCallback =
   | { status: "tokens"; params: AuthCallbackParams }
   | { status: "malformed"; message: string };
 
-export function isAuthCallbackUrl(url: string): boolean {
-  const normalized = url.toLowerCase();
+type ParsedCallbackLocation = {
+  protocol: string;
+  hostname: string;
+  pathname: string;
+};
+
+function parseCallbackLocation(url: string): ParsedCallbackLocation | null {
+  try {
+    const parsed = new URL(url);
+    return {
+      protocol: parsed.protocol.toLowerCase(),
+      hostname: parsed.hostname.toLowerCase(),
+      pathname: parsed.pathname,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isTrustedOverloadCallback(location: ParsedCallbackLocation): boolean {
   return (
-    normalized.includes(`${AUTH_APP_SCHEME}://${AUTH_CALLBACK_PATH}`) ||
-    normalized.includes(`/${AUTH_CALLBACK_PATH}`) ||
-    normalized.includes(`/--/${AUTH_CALLBACK_PATH}`)
+    location.protocol === `${AUTH_APP_SCHEME}:` &&
+    location.hostname === "auth" &&
+    location.pathname === "/callback"
   );
+}
+
+function isTrustedExpoGoCallback(location: ParsedCallbackLocation): boolean {
+  return location.protocol === "exp:" && location.pathname === "/--/auth/callback";
+}
+
+/** Accepts only exact trusted mobile callback URLs, not substring lookalikes. */
+export function isAuthCallbackUrl(url: string): boolean {
+  const location = parseCallbackLocation(url);
+  if (!location) {
+    return false;
+  }
+
+  return isTrustedOverloadCallback(location) || isTrustedExpoGoCallback(location);
 }
 
 function extractParamString(url: string): string {

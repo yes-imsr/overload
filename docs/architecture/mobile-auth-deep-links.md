@@ -86,6 +86,7 @@ New Google users receive `profiles` and `game_state` rows from the existing `han
 - No service role keys or provider secrets belong in `apps/mobile`.
 - Password reset request copy is intentionally non-enumerating.
 - Callback parsing rejects URLs that do not match the auth callback route.
+- Callback validation uses structured URL parsing and only accepts exact trusted forms: `overload://auth/callback` and `exp://<host>/--/auth/callback`. Substring matches such as `overload://attacker/auth/callback` are rejected.
 
 ## QA checklist
 
