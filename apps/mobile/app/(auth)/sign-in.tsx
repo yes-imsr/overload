@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { Href, router } from "expo-router";
 import { useEffect, useState } from "react";
 import { useOnboardingRedirect } from "@/hooks/use-onboarding-redirect";
 import { Pressable, StyleSheet, Text, View } from "react-native";
@@ -149,6 +149,11 @@ export default function SignInScreen() {
         value={password}
         onChangeText={setPassword}
       />
+      {mode === "sign_in" ? (
+        <Pressable onPress={() => router.push("/forgot-password" as Href)} style={styles.linkButton}>
+          <Text style={styles.linkLabel}>Forgot password?</Text>
+        </Pressable>
+      ) : null}
     </OnboardingShell>
   );
 }
@@ -171,5 +176,13 @@ const styles = StyleSheet.create({
   error: {
     ...typography.caption,
     color: colors.accent.dangerBright,
+  },
+  linkButton: {
+    alignSelf: "flex-start",
+    paddingVertical: spacing.xs,
+  },
+  linkLabel: {
+    ...typography.bodyMedium,
+    color: colors.text.secondary,
   },
 });

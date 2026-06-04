@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatAuthError, validateAuthCredentials } from "./auth-errors";
+import {
+  formatAuthError,
+  formatPasswordResetRequestError,
+  PASSWORD_RESET_REQUEST_SUCCESS_MESSAGE,
+  validateAuthCredentials,
+  validatePasswordUpdate,
+} from "./auth-errors";
 
 describe("formatAuthError", () => {
   it("uses a generic message for invalid login credentials", () => {
@@ -31,5 +37,17 @@ describe("validateAuthCredentials", () => {
     expect(validateAuthCredentials("user@example.com", "12345")).toBe(
       "Password must be at least 6 characters.",
     );
+  });
+});
+
+describe("password reset helpers", () => {
+  it("uses non-enumerating reset request copy", () => {
+    expect(formatPasswordResetRequestError(new Error("User not found"))).toBe(
+      PASSWORD_RESET_REQUEST_SUCCESS_MESSAGE,
+    );
+  });
+
+  it("validates password confirmation", () => {
+    expect(validatePasswordUpdate("secret123", "different")).toBe("Passwords do not match.");
   });
 });
