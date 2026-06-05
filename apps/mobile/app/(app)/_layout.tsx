@@ -40,6 +40,7 @@ export default function MainAppLayout() {
       <Tabs.Screen name="workouts" options={{ title: "Workouts" }} />
       <Tabs.Screen name="economy" options={{ title: "Economy" }} />
       <Tabs.Screen name="profile" options={{ title: "Profile" }} />
+      <Tabs.Screen name="delete-account" options={{ href: null }} />
     </Tabs>
   );
 }

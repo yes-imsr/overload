@@ -11,6 +11,7 @@ Edge Functions for server-validated workout completion, progression, prestige, d
 | `stability-snapshot` | Read server-computed Entropy and Stability Task state |
 | `reveal-debuff` | Reveal pending Stability Task when a workout is in progress |
 | `resolve-debuff` | Resolve the active Stability Task |
+| `delete-account` | Permanently delete the authenticated user and cascade-delete all app data |
 
 Edge functions consume domain logic from `@overload/core-engine` via a bundled artifact:
 

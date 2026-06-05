@@ -1,6 +1,6 @@
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import { PlaceholderScreen } from "@/components/placeholder-screen";
 import { PrimaryCTAButton } from "@/components";
 import { useAuthSession, useSignOut } from "@/features/onboarding/queries";
@@ -43,6 +43,13 @@ export default function ProfileRoute() {
         loading={signOut.isPending}
         onPress={handleSignOut}
       />
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push("/delete-account" as Href)}
+        style={styles.deleteLink}
+      >
+        <Text style={styles.deleteLinkLabel}>Delete account</Text>
+      </Pressable>
     </PlaceholderScreen>
   );
 }
@@ -57,5 +64,14 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.accent.dangerBright,
     marginBottom: spacing.sm,
+  },
+  deleteLink: {
+    alignItems: "center",
+    marginTop: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  deleteLinkLabel: {
+    ...typography.bodyMedium,
+    color: colors.accent.dangerBright,
   },
 });
