@@ -140,3 +140,20 @@ export function formatPasswordUpdateError(error: unknown): string {
 
   return "Unable to update password. Try again or request a new reset link.";
 }
+
+export function formatGoogleSignInError(error: unknown): string {
+  const normalized = normalizeMessage(error).toLowerCase();
+
+  if (
+    normalized.includes("provider") &&
+    (normalized.includes("not enabled") || normalized.includes("disabled"))
+  ) {
+    return "Google sign-in is unavailable right now.";
+  }
+
+  if (normalized.includes("oauth") && normalized.includes("provider")) {
+    return "Google sign-in is unavailable right now.";
+  }
+
+  return "Unable to sign in with Google. Try again or use email.";
+}

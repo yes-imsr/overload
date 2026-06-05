@@ -15,6 +15,24 @@ describe("auth-linking-parse", () => {
   it("recognizes overload scheme callback URLs", () => {
     expect(isAuthCallbackUrl("overload://auth/callback")).toBe(true);
     expect(isAuthCallbackUrl("exp://127.0.0.1:8081/--/auth/callback")).toBe(true);
+    expect(isAuthCallbackUrl("exp://localhost:8081/--/auth/callback")).toBe(true);
+  });
+
+  it("rejects crafted callback lookalike URLs", () => {
+    expect(
+      isAuthCallbackUrl(
+        "overload://attacker/auth/callback#access_token=abc&refresh_token=def",
+      ),
+    ).toBe(false);
+    expect(isAuthCallbackUrl("https://example.com/auth/callback?code=abc")).toBe(false);
+    expect(isAuthCallbackUrl("overload://auth/callback.evil/path")).toBe(false);
+  });
+
+  it("does not restore sessions from rejected lookalike callback URLs", () => {
+    const parsed = parseAuthCallbackUrl(
+      "overload://attacker/auth/callback#access_token=abc&refresh_token=def",
+    );
+    expect(parsed.status).toBe("malformed");
   });
 
   it("parses token fragments from callback URLs", () => {

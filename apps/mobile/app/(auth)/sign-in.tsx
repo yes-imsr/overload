@@ -1,6 +1,7 @@
 import { Href, router } from "expo-router";
 import { useEffect, useState } from "react";
 import { useOnboardingRedirect } from "@/hooks/use-onboarding-redirect";
+import type { Session } from "@supabase/supabase-js";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { PrimaryCTAButton } from "@/components";
@@ -8,12 +9,13 @@ import { FormField } from "@/components/FormField";
 import { OnboardingShell } from "@/components/OnboardingShell";
 import { SessionRestoreNotice } from "@/components/SessionRestoreNotice";
 import { authSessionQueryKey } from "@/features/onboarding/queries";
-import { resolveOnboardingRoute } from "@/features/onboarding/onboarding-routes";
 import {
   formatAuthError,
   validateAuthCredentials,
 } from "@/lib/auth-errors";
-import { supabase } from "@/lib/supabase";
+import { resolveAuthenticatedRoute } from "@/lib/auth-session";
+import { signInWithGoogleFromClient } from "@/lib/google-sign-in-client";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { colors, spacing, typography } from "@/tokens";
 
 type Mode = "sign_in" | "sign_up";
@@ -32,6 +34,46 @@ export default function SignInScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const navigateAfterSession = async (session: Session) => {
+    queryClient.setQueryData(authSessionQueryKey, session);
+
+    const nextRoute = await resolveAuthenticatedRoute(session);
+    if (nextRoute.status === "error") {
+      setError(nextRoute.message);
+      return;
+    }
+
+    router.replace(nextRoute.route);
+  };
+
+  const handleGoogleSignIn = async () => {
+    if (!supabase) {
+      setError("Supabase is not configured.");
+      return;
+    }
+
+    setGoogleLoading(true);
+    setError(null);
+
+    try {
+      const result = await signInWithGoogleFromClient();
+
+      if (result.status === "cancelled") {
+        return;
+      }
+
+      if (result.status === "error") {
+        setError(result.message);
+        return;
+      }
+
+      await navigateAfterSession(result.session);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const submit = async () => {
     if (!supabase) {
@@ -68,25 +110,7 @@ export default function SignInScreen() {
 
       queryClient.setQueryData(authSessionQueryKey, session);
 
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .select("onboarding_status")
-        .eq("id", session.user.id)
-        .single();
-
-      if (profileError) {
-        throw profileError;
-      }
-
-      const next = resolveOnboardingRoute({
-        hasSession: true,
-        onboardingStatus: profile.onboarding_status,
-        isLoading: false,
-      });
-
-      if (next) {
-        router.replace(next);
-      }
+      await navigateAfterSession(session);
     } catch (caught) {
       setError(formatAuthError(mode, caught));
     } finally {
@@ -98,14 +122,22 @@ export default function SignInScreen() {
     <OnboardingShell
       eyebrow="Access control"
       title={mode === "sign_in" ? "Restore operator session" : "Create operator ID"}
-      body="Use email credentials. No social import, wearables, or nutrition setup in MVP."
+      body="Use email credentials or Google account access. No contact import, wearables, or nutrition setup in MVP."
       footer={
         <>
           <SessionRestoreNotice />
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <PrimaryCTAButton
+            label="Sign in with Google"
+            loading={googleLoading}
+            disabled={loading || !isSupabaseConfigured()}
+            onPress={handleGoogleSignIn}
+          />
+          <Text style={styles.dividerLabel}>Or use email</Text>
+          <PrimaryCTAButton
             label={mode === "sign_in" ? "Sign in" : "Create account"}
             loading={loading}
+            disabled={googleLoading}
             onPress={submit}
           />
         </>
@@ -184,5 +216,10 @@ const styles = StyleSheet.create({
   linkLabel: {
     ...typography.bodyMedium,
     color: colors.text.secondary,
+  },
+  dividerLabel: {
+    ...typography.caption,
+    color: colors.text.muted,
+    textAlign: "center",
   },
 });
